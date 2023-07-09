@@ -69,7 +69,7 @@ def data_collector(folder, num_nodes, connected):
 
 ######################### prova MC MAU
 
-num_nodes = 9
+num_nodes = 10
 num_edges = num_nodes * (num_nodes - 1) // 2
 num_episodes = 6 * (2 ** (num_edges +1) -1)
 #num_episodes = 100
@@ -78,7 +78,9 @@ env = LinEnvMau(num_nodes)
 #print(env.state)
 
 folder = "./graph_db/"
+print(f"loading all graphs with {num_nodes} nodes")
 all_graphs = data_collector(folder, num_nodes, False)
+print("loaded")
 
 print(len(all_graphs))
 print(type(all_graphs[0]))
@@ -120,7 +122,7 @@ for i, nx_graph in enumerate(all_graphs):
 # else:
 #     print("Condition holds for all connected graphs.")
 
-print(counter_examples_indexes)
+print("\n\n", counter_examples_indexes)
 
 # print(f"wagner1 score = {graph.wagner1()} = {const} - ({radius} + {weight}) = sqrt(8) + 1 - (radius + weight)")
 
