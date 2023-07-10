@@ -20,7 +20,7 @@ def make_epsilon_greedy_policy(Q, epsilon, nA):
     """
     def policy_fn(state):
         A = np.ones(nA, dtype=float) * epsilon / nA
-        best_action = np.argmax(Q[tuple(state)])
+        best_action = np.argmax(Q[str(state)])
         A[best_action] += (1.0 - epsilon)
         return A
     return policy_fn
@@ -31,7 +31,7 @@ def epsilon_schedule(episode_list, epsilon, episode_number):
         epsilon = epsilon / 2
     return epsilon
 
-def mc_control_epsilon_greedy(env, num_episodes, discount_factor=1.0, epsilon=0.1, max_steps=1000, schedule=[], save=True):
+def mc_control_epsilon_greedy(env, num_episodes, discount_factor=1.0, epsilon=0.1, max_steps=1000, schedule=[], Q=defaultdict(lambda: np.zeros(2)), save=True):
     """
     Monte Carlo Control using Epsilon-Greedy policies.
     Finds an optimal epsilon-greedy policy.
@@ -61,7 +61,7 @@ def mc_control_epsilon_greedy(env, num_episodes, discount_factor=1.0, epsilon=0.
 
     # The final action-value function.
     # A nested dictionary that maps state -> (action -> action-value).
-    Q = defaultdict(lambda: np.zeros(env.nA))
+    # Q = defaultdict(lambda: np.zeros(env.nA))
 
     # Initialize a dictionary to store the Q-value differences
     Q_diff = defaultdict(lambda: np.zeros(env.nA))
@@ -101,17 +101,17 @@ def mc_control_epsilon_greedy(env, num_episodes, discount_factor=1.0, epsilon=0.
 
         # The policy is improved implicitly by changing the Q dictionary
         for i, (state, action, reward, _) in enumerate(episode):
-            sa_pair = (tuple(state), action)
+            sa_pair = (str(state), action)
             # Sum up all rewards starting from time i
             G = sum([x[2] * (discount_factor ** j) for j, x in enumerate(episode[i:])])
             # Calculate average return for this state over all sampled episodes
-            old_Q = Q[tuple(state)][action]
+            old_Q = Q[str(state)][action]
             returns_sum[sa_pair] += G
             returns_count[sa_pair] += 1.0
             new_Q = returns_sum[sa_pair] / returns_count[sa_pair]
-            Q[tuple(state)][action] = new_Q
+            Q[str(state)][action] = new_Q
             # Store the absolute difference between old and new Q values
-            Q_diff[tuple(state)][action] = abs(new_Q - old_Q)
+            Q_diff[str(state)][action] = abs(new_Q - old_Q)
 
                 # After each episode, compute the norm of Q_diff and store it
 

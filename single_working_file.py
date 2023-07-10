@@ -27,12 +27,30 @@ import copy
 import h5py
 from collections import defaultdict
 import sys
+import json
+import os
 
 # my classes
 # from feats_miner import feats_miner
 from envs import LinEnvMau#, LocEnv, GlobEnv
 from graph import Graph
 from tabular_mc import mc_control_epsilon_greedy, make_epsilon_greedy_policy
+
+class QDictionary:
+    def __init__(self):
+        pass
+
+    def save(self, Q, filename):
+        with h5py.File(filename, 'w') as hf:
+            for key, value in Q.items():
+                hf.create_dataset(key, data=value)
+
+    def load(self, filename):
+        Q = defaultdict(lambda: np.zeros(2))
+        with h5py.File(filename, 'r') as hf:
+            for key in hf.keys():
+                Q[key] = np.array(hf.get(key))
+        return Q
 
 def data_collector(folder, num_nodes, connected):
   """
@@ -72,7 +90,7 @@ def data_collector(folder, num_nodes, connected):
 number_of_nodes = 10
 number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
 #num_episodes = 12 * (2 ** (number_of_edges +1) - 1)
-num_episodes = 2000
+num_episodes = 1000
 env = LinEnvMau(number_of_nodes)
 # state = env.reset()
 #print(env.state)
@@ -181,8 +199,25 @@ def get_max_wagner_score_graph(all_graphs):
 schedule=[2**n for n in range(10, int(np.log2(num_episodes)))]
 #print(schedule)
 
-print("\nstarted MC\n")
-Q, policy, episodes, Q_diff_norms = mc_control_epsilon_greedy(env, num_episodes, discount_factor=0.1, epsilon=1, schedule=schedule, max_steps=1000000, save=True)
+# Load Q if it was previously written
+filename = f'Q_dict_{number_of_nodes}.h5'
+if os.path.exists(filename):
+  Q_dict = QDictionary()
+  Q = Q_dict.load(filename)
+  print(f"\nold Q contained {len(Q)} states")
+  print(f"\nstarting MC\n")
+  Q, policy, episodes, Q_diff_norms = mc_control_epsilon_greedy(env, num_episodes, discount_factor=0.1, epsilon=1, schedule=schedule, max_steps=1000000, Q=Q, save=True)
+else:
+  Q, policy, episodes, Q_diff_norms = mc_control_epsilon_greedy(env, num_episodes, discount_factor=0.1, epsilon=1, schedule=schedule, max_steps=1000000, save=True)
+
+print(f"\nafter {num_episodes} episodes, now Q contains {len(Q)} states")
+Q_dict = QDictionary()
+
+# Save the dictionary
+Q_dict.save(Q, filename)
+print("\nnew Q saved")
+
+exit(0)
 
 states = [state for episode in episodes for state, _, _, _ in episode]
 #print("states done")
