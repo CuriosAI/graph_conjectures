@@ -97,13 +97,12 @@ def get_max_wagner_score_graph(all_graphs):
 
     return max_wagner_score_graph, max_wagner_score, max_wagner_score_connected_graph, max_wagner_score_connected
 
-folder = "./graph_db/"
-print(f"\nloading all graphs with {number_of_nodes} nodes")
-all_graphs = data_collector(folder, number_of_nodes, False)
-print("\nloaded")
+# folder = "./graph_db/"
+# print(f"\nloading all graphs with {number_of_nodes} nodes")
+# all_graphs = data_collector(folder, number_of_nodes, False)
+# print("\nloaded")
 
-print(len(all_graphs))
-#print(type(all_graphs[0]))
+# print(len(all_graphs))
 
 # wagner_scores = [(Graph(nx_graph).wagner1(), Graph(nx_graph).is_connected()) for nx_graph in all_graphs]
 # sorted_wagner_scores = sorted(wagner_scores, key=lambda x: x[0], reverse=True)
