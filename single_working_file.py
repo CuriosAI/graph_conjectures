@@ -20,6 +20,8 @@ import numpy as np
 import math
 import itertools as it
 import random
+import scipy.sparse as sp
+import keyboard
 
 import json
 import pathlib
@@ -87,10 +89,10 @@ def data_collector(folder, num_nodes, connected):
 
 ######################### prova MC MAU
 
-number_of_nodes = 10
+number_of_nodes = 18
 number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
 #num_episodes = 12 * (2 ** (number_of_edges +1) - 1)
-num_episodes = 1000
+num_episodes = 10000
 env = LinEnvMau(number_of_nodes)
 # state = env.reset()
 #print(env.state)
@@ -196,26 +198,89 @@ def get_max_wagner_score_graph(all_graphs):
 
 # print(f"wagner1 score = {graph.wagner1()} = {const} - ({radius} + {weight}) = sqrt(8) + 1 - (radius + weight)")
 
-schedule=[2**n for n in range(10, int(np.log2(num_episodes)))]
-#print(schedule)
+# def show_adjacency(Q):
+#   # find and print the optimal graph up to now
+#   print("printing the optimal graph...")
+#   greedy_policy = make_epsilon_greedy_policy(Q=Q, epsilon=0.0, nA=env.nA)
+#   env.reset()
+#   while not env.done:
+#     probs = greedy_policy(env.state)
+#     action = np.random.choice(np.arange(len(probs)), p=probs)
+#     #print(env.state)
+#     #print(action)
+#     state, reward, done = env.step(action)
+#     #print(f"after action {action} we get state = {state}, reward = {reward}, done = {done}")
+#     final_state = copy.deepcopy(env.state)
+#   graph = Graph(final_state[:number_of_edges])
+#   print(f"graph found by the greedy policy after {ct * num_episodes} episodes:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
+
+schedule=[2**n for n in range(10, int(np.log2(num_episodes)) + 1)]
+
+# lr_cuts = 5
+# schedule=[n for n in range(num_episodes // lr_cuts, num_episodes, num_episodes // lr_cuts)]
+print(schedule)
+
+filename = f'Q_dict_{number_of_nodes}.h5'
+Q_dict = QDictionary()
+Q = defaultdict(lambda: np.zeros(2))
+ct = 0
+# keyboard.on_press_key('s', show_adjacency(Q))
 
 # Load Q if it was previously written
-filename = f'Q_dict_{number_of_nodes}.h5'
-if os.path.exists(filename):
-  Q_dict = QDictionary()
+if not os.path.exists(filename):
+  print(f"\nfirst start of MC, Q is empty")
+  print(f"\nstarting MC for the first time with an empty Q for {num_episodes} episodes\n")
+  Q, policy, episodes, Q_diff_norms = mc_control_epsilon_greedy(env, num_episodes, discount_factor=0.1, epsilon=1, schedule=schedule, max_steps=1000000, save=True)
+  print(f"\nfirst MC done, now Q contains {len(Q)} states")
+  # Save the dictionary
+  Q_dict.save(Q, filename)
+  print("\nnew Q saved")
+  ct = ct + 1
+  print(f"{ct * num_episodes} episodes done up to now, saving each {num_episodes} episodes")
+  
+  # # find and print the optimal graph up to now
+  # greedy_policy = make_epsilon_greedy_policy(Q=Q, epsilon=0.0, nA=env.nA)
+  # env.reset()
+  # while not env.done:
+  #   probs = greedy_policy(env.state)
+  #   action = np.random.choice(np.arange(len(probs)), p=probs)
+  #   #print(env.state)
+  #   #print(action)
+  #   state, reward, done = env.step(action)
+  #   #print(f"after action {action} we get state = {state}, reward = {reward}, done = {done}")
+  #   final_state = copy.deepcopy(env.state)
+  # graph = Graph(final_state[:number_of_edges])
+  # print(f"graph found by the greedy policy after {ct * num_episodes} episodes:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
+
+while True:
+  # Load Q
   Q = Q_dict.load(filename)
   print(f"\nold Q contained {len(Q)} states")
   print(f"\nstarting MC\n")
   Q, policy, episodes, Q_diff_norms = mc_control_epsilon_greedy(env, num_episodes, discount_factor=0.1, epsilon=1, schedule=schedule, max_steps=1000000, Q=Q, save=True)
-else:
-  Q, policy, episodes, Q_diff_norms = mc_control_epsilon_greedy(env, num_episodes, discount_factor=0.1, epsilon=1, schedule=schedule, max_steps=1000000, save=True)
+  print(f"\nafter batch #{ct+1} of {num_episodes} MC episodes, Q contains {len(Q)} states")
+  # Save the dictionary
+  Q_dict.save(Q, filename)
+  print("\nnew Q saved")
+  ct = ct + 1
+  print(f"{ct * num_episodes} episodes done in this 'while True' loop, saving each {num_episodes} episodes")
+  
+  # find and print the optimal graph up to now
+  greedy_policy = make_epsilon_greedy_policy(Q=Q, epsilon=0.0, nA=env.nA)
+  env.reset()
+  while not env.done:
+    probs = greedy_policy(env.state)
+    action = np.random.choice(np.arange(len(probs)), p=probs)
+    #print(env.state)
+    #print(action)
+    state, reward, done = env.step(action)
+    #print(f"after action {action} we get state = {state}, reward = {reward}, done = {done}")
+    final_state = copy.deepcopy(env.state)
+  graph = Graph(final_state[:number_of_edges])
+  print(f"graph found by the greedy policy after {ct * num_episodes} episodes:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
 
-print(f"\nafter {num_episodes} episodes, now Q contains {len(Q)} states")
-Q_dict = QDictionary()
 
-# Save the dictionary
-Q_dict.save(Q, filename)
-print("\nnew Q saved")
+
 
 exit(0)
 
