@@ -32,7 +32,7 @@ import sys
 # from feats_miner import feats_miner
 from envs import LinEnvMau#, LocEnv, GlobEnv
 from graph import Graph
-from tabular_mc import mc_control_epsilon_greedy
+from tabular_mc import mc_control_epsilon_greedy, make_epsilon_greedy_policy
 
 def data_collector(folder, num_nodes, connected):
   """
@@ -69,60 +69,103 @@ def data_collector(folder, num_nodes, connected):
 
 ######################### prova MC MAU
 
-num_nodes = 10
-num_edges = num_nodes * (num_nodes - 1) // 2
-num_episodes = 6 * (2 ** (num_edges +1) -1)
-#num_episodes = 100
-env = LinEnvMau(num_nodes)
+number_of_nodes = 9
+number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
+#num_episodes = 12 * (2 ** (number_of_edges +1) - 1)
+num_episodes = 5000
+env = LinEnvMau(number_of_nodes)
 # state = env.reset()
 #print(env.state)
 
+def get_max_wagner_score_graph(all_graphs):
+    max_wagner_score = float('-inf')  # Initialize with negative infinity
+    max_wagner_score_graph = None
+    max_wagner_score_connected = float('-inf')  # Initialize with negative infinity
+    max_wagner_score_graph_connected = None
+
+    for nx_graph in all_graphs:
+        graph = Graph(nx_graph)
+        wagner_score = graph.wagner1()
+        if wagner_score > max_wagner_score:
+            max_wagner_score = wagner_score
+            max_wagner_score_graph = graph
+        if graph.is_connected():
+            wagner_score_connected = wagner_score
+            if wagner_score_connected > max_wagner_score_connected:
+                max_wagner_score_connected = wagner_score_connected
+                max_wagner_score_connected_graph = graph
+
+    return max_wagner_score_graph, max_wagner_score, max_wagner_score_connected_graph, max_wagner_score_connected
+
 folder = "./graph_db/"
-print(f"loading all graphs with {num_nodes} nodes")
-all_graphs = data_collector(folder, num_nodes, False)
-print("loaded")
+print(f"\nloading all graphs with {number_of_nodes} nodes")
+all_graphs = data_collector(folder, number_of_nodes, False)
+print("\nloaded")
 
 print(len(all_graphs))
-print(type(all_graphs[0]))
+#print(type(all_graphs[0]))
 
-#wagner_scores = [(Graph(nx_graph).wagner1(), Graph(nx_graph).is_connected()) for nx_graph in all_graphs]
+# wagner_scores = [(Graph(nx_graph).wagner1(), Graph(nx_graph).is_connected()) for nx_graph in all_graphs]
+# sorted_wagner_scores = sorted(wagner_scores, key=lambda x: x[0], reverse=True)
 
-#print(wagner_scores)
+# max_wagner_score_graph, max_wagner_score, max_wagner_score_connected_graph, max_wagner_score_connected = get_max_wagner_score_graph(all_graphs)
 
-counter_examples_indexes = []
-for i, nx_graph in enumerate(all_graphs):
-    if i % 1000 == 0:
-      print(f"\rgraph {i}/{len(all_graphs)}", end="")
-      sys.stdout.flush()
+# print("\nwagner scores done")
 
-    graph = Graph(nx_graph)
-    if graph.is_connected():
-        if graph.wagner1() > 0:
-            print(f"Condition does not hold for graph #{i}")
-            counter_examples_indexes.append(i)
-            # const = 1 + np.sqrt(graph.num_nodes - 1)
-            # radius = max(np.real(nx.adjacency_spectrum(graph.graph)))
-            # weight = len(nx.max_weight_matching(graph.graph))
-            # wagner1_score = const - (radius + weight)
+# print(sorted_wagner_scores)
 
-            # # Create a figure and axes
-            # fig, ax = plt.subplots()
-            # pos = nx.spring_layout(graph.graph)
-            # ax.clear()
-            # # Draw the new graph
-            # plt.title(f"wagner1 score = {graph.wagner1()} = {const} - ({radius} + {weight}) = sqrt(8) + 1 - (radius + weight)")
-            # nx.draw(graph.graph, pos=pos, ax=ax, with_labels=True)
-            # # Update the display
-            # plt.draw()
-            # # Pause for a moment to show the plot
-            # plt.pause(1)
-            # # Keep the window open
-            # #plt.show()
-            # break
-# else:
-#     print("Condition holds for all connected graphs.")
+# print(max_wagner_score, max_wagner_score_connected)
 
-print("\n\n", counter_examples_indexes)
+
+# # Create a figure and axes
+# fig, ax = plt.subplots()
+# pos = nx.spring_layout(max_wagner_score_graph.graph)
+# ax.clear()
+# # Draw the new graph
+# for graph in [max_wagner_score_graph, max_wagner_score_connected_graph]:
+#   plt.title(f"wagner1 score = {graph.wagner1()}")
+#   nx.draw(graph.graph, pos=pos, ax=ax, with_labels=True)
+#   # Update the display
+#   plt.draw()
+#   # Pause for a moment to show the plot
+#   plt.pause(1)
+# # Keep the window open
+# #plt.show()
+
+# counter_examples_indexes = []
+# for i, nx_graph in enumerate(all_graphs):
+#     if i % 1000 == 0:
+#       print(f"\rgraph {i}/{len(all_graphs)}", end="")
+#       sys.stdout.flush()
+
+#     graph = Graph(nx_graph)
+#     if graph.is_connected():
+#         if graph.wagner1() > 0:
+#             print(f"Condition does not hold for graph #{i}")
+#             counter_examples_indexes.append(i)
+#             # const = 1 + np.sqrt(graph.num_nodes - 1)
+#             # radius = max(np.real(nx.adjacency_spectrum(graph.graph)))
+#             # weight = len(nx.max_weight_matching(graph.graph))
+#             # wagner1_score = const - (radius + weight)
+
+#             # # Create a figure and axes
+#             # fig, ax = plt.subplots()
+#             # pos = nx.spring_layout(graph.graph)
+#             # ax.clear()
+#             # # Draw the new graph
+#             # plt.title(f"wagner1 score = {graph.wagner1()} = {const} - ({radius} + {weight}) = sqrt(8) + 1 - (radius + weight)")
+#             # nx.draw(graph.graph, pos=pos, ax=ax, with_labels=True)
+#             # # Update the display
+#             # plt.draw()
+#             # # Pause for a moment to show the plot
+#             # plt.pause(1)
+#             # # Keep the window open
+#             # #plt.show()
+#             # break
+# # else:
+# #     print("Condition holds for all connected graphs.")
+
+# print("\n\n", counter_examples_indexes)
 
 # print(f"wagner1 score = {graph.wagner1()} = {const} - ({radius} + {weight}) = sqrt(8) + 1 - (radius + weight)")
 
@@ -135,58 +178,78 @@ print("\n\n", counter_examples_indexes)
 # print(nx.adjacency_spectrum(graph.graph))
 
 # print(f"wagner1 score = {graph.wagner1()} = {const} - ({radius} + {weight}) = sqrt(8) + 1 - (radius + weight)")
-            
-exit(0)
 
-Q, policy, episodes, Q_diff_norms = mc_control_epsilon_greedy(env, num_episodes, discount_factor=0.1, epsilon=1, max_steps=1000, save=True)
+schedule=[2**n for n in range(10, int(np.log2(num_episodes)))]
+#print(schedule)
 
-print(episodes[:2])
+print("\nstarted MC\n")
+Q, policy, episodes, Q_diff_norms = mc_control_epsilon_greedy(env, num_episodes, discount_factor=0.1, epsilon=1, schedule=schedule, max_steps=1000000, save=True)
 
 states = [state for episode in episodes for state, _, _, _ in episode]
+#print("states done")
 next_states = [next_state for episode in episodes for _, _, _, next_state in episode]
+#print("next states done")
 all = states + next_states # all states visited during episodes, including final states
 all = [tuple(s) for s in all] # later we need it immutable
+#print("all states done")
 
-assert len(all) == num_episodes * num_edges * 2
+assert len(all) == num_episodes * number_of_edges * 2
 
 all_unique = list(dict.fromkeys(all))
 
-assert len(all_unique) == 2 ** (num_edges +1) -1
+#assert len(all_unique) == 2 ** (number_of_edges +1) -1
+print(f"\n\nexploration: {len(all_unique)} of {2 ** (number_of_edges +1) -1}")
 
-frequencies = []
+# frequencies = []
 
-for state in all_unique:
-  frequencies.append(all.count(state) / len(all))
+# for state in all_unique:
+#   frequencies.append(all.count(state) / len(all))
 
-print(sum(frequencies))
-print(1/len(frequencies), np.min(frequencies), np.max(frequencies))
+# print(sum(frequencies))
+# print(1/len(frequencies), np.min(frequencies), np.max(frequencies))
 
-from scipy.special import kl_div
+# from scipy.special import kl_div
 
-def relative_entropy(p):
-    # Calculate the uniform distribution
-    uniform_p = np.ones(len(p)) / len(p)
+# def relative_entropy(p):
+#     # Calculate the uniform distribution
+#     uniform_p = np.ones(len(p)) / len(p)
     
-    # Calculate the Kullback-Leibler divergence
-    kl_divergence = kl_div(p, uniform_p)
+#     # Calculate the Kullback-Leibler divergence
+#     kl_divergence = kl_div(p, uniform_p)
     
-    return np.sum(kl_divergence)
+#     return np.sum(kl_divergence)
 
+# print(relative_entropy(frequencies))
 
-print(relative_entropy(frequencies))
+greedy_policy = make_epsilon_greedy_policy(Q=Q, epsilon=0.0, nA=env.nA)
+env.reset()
+while not env.done:
+  probs = greedy_policy(env.state)
+  action = np.random.choice(np.arange(len(probs)), p=probs)
+  #print(env.state)
+  #print(action)
+  state, reward, done = env.step(action)
+  #print(f"after action {action} we get state = {state}, reward = {reward}, done = {done}")
+  final_state = copy.deepcopy(env.state)
 
-import matplotlib.pyplot as plt
+#print(final_state)
 
-# Assume Q_diff_norms is the list of norms you got from your function
+graph = Graph(final_state[:number_of_edges])
 
-plt.figure(figsize=(10,6))
-plt.plot(Q_diff_norms)
-plt.title('Norm of Q-value Differences Over Episodes')
-plt.xlabel('Episode')
-plt.ylabel('Norm of Q-value Differences')
+#max_wagner_score_graph.draw()
+graph.draw()
+print(graph.wagner1())
+
+# # Assume Q_diff_norms is the list of norms you got from your function
+
+# plt.figure(figsize=(10,6))
+# plt.plot(Q_diff_norms)
+# plt.title('Norm of Q-value Differences Over Episodes')
+# plt.xlabel('Episode')
+# plt.ylabel('Norm of Q-value Differences')
+# plt.show()
+
 plt.show()
-
-
 exit(0)
 
 # Sort the states based on the timestep part
