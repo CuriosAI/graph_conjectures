@@ -69,10 +69,10 @@ def data_collector(folder, num_nodes, connected):
 
 ######################### prova MC MAU
 
-number_of_nodes = 9
+number_of_nodes = 10
 number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
 #num_episodes = 12 * (2 ** (number_of_edges +1) - 1)
-num_episodes = 5000
+num_episodes = 2000
 env = LinEnvMau(number_of_nodes)
 # state = env.reset()
 #print(env.state)
@@ -248,6 +248,8 @@ print(graph.wagner1())
 # plt.xlabel('Episode')
 # plt.ylabel('Norm of Q-value Differences')
 # plt.show()
+
+print(nx.adjacency_matrix(graph.graph))
 
 plt.show()
 exit(0)
