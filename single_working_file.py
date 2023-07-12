@@ -89,7 +89,7 @@ def data_collector(folder, num_nodes, connected):
 
 ######################### prova MC MAU
 
-number_of_nodes = 18
+number_of_nodes = 5
 number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
 #num_episodes = 12 * (2 ** (number_of_edges +1) - 1)
 num_episodes = 10000

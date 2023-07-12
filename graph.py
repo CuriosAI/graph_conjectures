@@ -37,10 +37,10 @@ class Graph:
 
         # Create an empty graph
         G = nx.Graph()
-        
+
         # Add nodes
         G.add_nodes_from(range(number_of_nodes))
-        
+
         # Add edges ordered by the order of the nodes
         edge_index = 0
         for i in range(number_of_nodes):
@@ -48,7 +48,7 @@ class Graph:
                 if graph[edge_index] == 1:
                     G.add_edge(i, j)
                 edge_index += 1
-        
+
         return G
 
     def wagner1(self):
@@ -56,10 +56,10 @@ class Graph:
         radius = max(np.real(nx.adjacency_spectrum(self.graph)))
         weight = len(nx.max_weight_matching(self.graph))
         return const - (radius + weight)
-    
+
     def is_connected(self):
         return nx.is_connected(self.graph)
-    
+
     def draw(self):
         # Create a figure and axes
         fig, ax = plt.subplots()
