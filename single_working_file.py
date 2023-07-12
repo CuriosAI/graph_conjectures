@@ -32,6 +32,11 @@ import sys
 import json
 import os
 
+import gymnasium as gym
+from gymnasium import spaces
+from stable_baselines3.common.env_checker import check_env
+from stable_baselines3.common.evaluation import evaluate_policy
+
 # my classes
 # from feats_miner import feats_miner
 from envs import LinEnvMau#, LocEnv, GlobEnv
@@ -85,6 +90,72 @@ def data_collector(folder, num_nodes, connected):
 ###############################
 ###############################
 ###############################
+
+
+################## prova PPO mau
+
+number_of_nodes = 4
+env = LinEnvMau(number_of_nodes)
+# If the environment don't follow the interface, an error will be thrown
+check_env(env, warn=True)
+
+env.reset()
+env.render()
+
+print(env.observation_space)
+print(env.action_space)
+print(env.action_space.sample())
+
+INSERT = 1
+number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
+
+for step in range(number_of_edges):
+    print(f"Step {step}")
+    obs, reward, terminated, truncated, info = env.step(INSERT)
+    done = terminated or truncated
+    print("obs=", obs, "reward=", reward, "done=", done, "info=", info)
+    env.render()
+    if done:
+        print("Goal reached!", "reward=", reward)
+        # env.render()
+        break
+    
+from stable_baselines3 import PPO, A2C, DQN
+from stable_baselines3.common.env_util import make_vec_env
+
+# Instantiate the env
+vec_env = make_vec_env(LinEnvMau, n_envs=1, env_kwargs=dict(number_of_nodes=number_of_nodes))
+
+modelppo = PPO('MlpPolicy', env, verbose=1)
+modela2c = A2C("MlpPolicy", env, verbose=1)
+modeldqn = DQN("MlpPolicy", env, verbose=1)
+
+# Train the agent
+model = modelppo
+model.learn(50000)
+
+mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=100, warn=False, deterministic=True)
+print(f"mean_reward: {mean_reward:.2f} +/- {std_reward:.2f}")
+
+# Test the trained agent
+obs, _ = env.reset()
+for step in range(number_of_edges):
+    action, _ = model.predict(obs, deterministic=True)
+    print(f"Step {step}")
+    print("Action: ", action)
+    obs, reward, done, _, info = env.step(action)
+    print("obs=", obs, "reward=", reward, "done=", done, "info", info)
+    env.render()
+    if done:
+        # Note that the VecEnv resets automatically
+        # when a done signal is encountered
+        print("Goal reached!", "reward=", reward)
+        #Graph(info[0]['terminal_observation'][:15]).draw()
+        #print(len(info[0]['terminal_observation']))
+        break
+    
+    
+
 
 
 ######################### prova MC MAU
