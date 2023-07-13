@@ -94,7 +94,7 @@ def data_collector(folder, num_nodes, connected):
 
 ################## prova PPO mau
 
-number_of_nodes = 5
+number_of_nodes = 6
 env = LinEnvMau(number_of_nodes)
 # If the environment don't follow the interface, an error will be thrown
 check_env(env, warn=True)
@@ -152,7 +152,7 @@ for step in range(number_of_edges):
         break
 
 # Train the agent
-train_steps = 17000
+train_steps = 100000
 print(f"\nTraining the PPO agent for {train_steps} steps\n")
 model.learn(train_steps)
 
