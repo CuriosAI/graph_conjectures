@@ -94,17 +94,18 @@ def data_collector(folder, num_nodes, connected):
 
 ################## prova PPO mau
 
-number_of_nodes = 4
+number_of_nodes = 5
 env = LinEnvMau(number_of_nodes)
 # If the environment don't follow the interface, an error will be thrown
 check_env(env, warn=True)
 
 env.reset()
-env.render()
+#env.render()
 
 print(env.observation_space)
 print(env.action_space)
 print(env.action_space.sample())
+print(env.action_space.n)
 
 INSERT = 1
 number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
@@ -114,12 +115,12 @@ for step in range(number_of_edges):
     obs, reward, terminated, truncated, info = env.step(INSERT)
     done = terminated or truncated
     print("obs=", obs, "reward=", reward, "done=", done, "info=", info)
-    env.render()
+    #env.render()
     if done:
         print("Goal reached!", "reward=", reward)
         # env.render()
         break
-    
+
 from stable_baselines3 import PPO, A2C, DQN
 from stable_baselines3.common.env_util import make_vec_env
 
@@ -130,63 +131,164 @@ modelppo = PPO('MlpPolicy', env, verbose=1)
 modela2c = A2C("MlpPolicy", env, verbose=1)
 modeldqn = DQN("MlpPolicy", env, verbose=1)
 
-# Train the agent
 model = modelppo
-model.learn(50000)
+
+# Test the untrained agent
+state, _ = env.reset()
+for step in range(number_of_edges):
+    action, _ = model.predict(state, deterministic=True)
+    print(f"Step {step}")
+    print("Action: ", action)
+    state, reward, done, _, info = env.step(action)
+    print("state=", state, "reward=", reward, "done=", done, "info", info)
+    #env.render()
+    if done:
+        # Note that the VecEnv resets automatically
+        # when a done signal is encountered
+        print("Goal reached!", "reward=", reward)
+        # env.render()
+        graph = Graph(state[:number_of_edges])
+        print(f"graph found by PPO with random weights:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
+        break
+
+# Train the agent
+train_steps = 17000
+print(f"\nTraining the PPO agent for {train_steps} steps\n")
+model.learn(train_steps)
 
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=100, warn=False, deterministic=True)
 print(f"mean_reward: {mean_reward:.2f} +/- {std_reward:.2f}")
 
 # Test the trained agent
-obs, _ = env.reset()
+state, _ = env.reset()
 for step in range(number_of_edges):
-    action, _ = model.predict(obs, deterministic=True)
+    action, _ = model.predict(state, deterministic=True)
     print(f"Step {step}")
     print("Action: ", action)
-    obs, reward, done, _, info = env.step(action)
-    print("obs=", obs, "reward=", reward, "done=", done, "info", info)
-    env.render()
+    state, reward, done, _, info = env.step(action)
+    print("state=", state, "reward=", reward, "done=", done, "info", info)
+    #env.render()
     if done:
         # Note that the VecEnv resets automatically
         # when a done signal is encountered
         print("Goal reached!", "reward=", reward)
-        #Graph(info[0]['terminal_observation'][:15]).draw()
-        #print(len(info[0]['terminal_observation']))
+        # env.render()
+        graph = Graph(state[:number_of_edges])
+        print(f"\ngraph found by PPO after {train_steps} steps:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
         break
     
     
 
 
-
 ######################### prova MC MAU
 
-number_of_nodes = 5
-number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
+print("\nTabular MC test\n")
+
+#number_of_nodes = 5
+#number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
 #num_episodes = 12 * (2 ** (number_of_edges +1) - 1)
-num_episodes = 10000
+num_episodes = 1000
 env = LinEnvMau(number_of_nodes)
 # state = env.reset()
 #print(env.state)
 
-def get_max_wagner_score_graph(all_graphs):
-    max_wagner_score = float('-inf')  # Initialize with negative infinity
-    max_wagner_score_graph = None
-    max_wagner_score_connected = float('-inf')  # Initialize with negative infinity
-    max_wagner_score_graph_connected = None
+# Exponential learning rate schedule for tabular MC: a list with episode numbers,
+# when those episode numbers are reached, lr is divided by 2
+#schedule=[2**n for n in range(10, int(np.log2(num_episodes)) + 1)]
 
-    for nx_graph in all_graphs:
-        graph = Graph(nx_graph)
-        wagner_score = graph.wagner1()
-        if wagner_score > max_wagner_score:
-            max_wagner_score = wagner_score
-            max_wagner_score_graph = graph
-        if graph.is_connected():
-            wagner_score_connected = wagner_score
-            if wagner_score_connected > max_wagner_score_connected:
-                max_wagner_score_connected = wagner_score_connected
-                max_wagner_score_connected_graph = graph
+# Linear lr schedule
+lr_cuts = 4
+schedule=[n for n in range(num_episodes // lr_cuts, num_episodes, num_episodes // lr_cuts)]
 
-    return max_wagner_score_graph, max_wagner_score, max_wagner_score_connected_graph, max_wagner_score_connected
+print(schedule)
+
+filename = f'Q_dict_{number_of_nodes}.h5'
+Q_dict = QDictionary()
+Q = defaultdict(lambda: np.zeros(2))
+ct = 0
+
+# Load Q if it was previously written, look for a filename f'Q_dict_{number_of_nodes}.h5'
+if not os.path.exists(filename):
+  print(f"\nfirst start of MC, Q is empty\n")
+  print(f"\nstarting MC for the first time with an empty Q for {num_episodes} episodes\n")
+  Q, policy, episodes, Q_diff_norms = mc_control_epsilon_greedy(env, num_episodes, discount_factor=0.1, epsilon=1, schedule=schedule, max_steps=1000000, save=True)
+  print(f"\nfirst MC done, now Q contains {len(Q)} states\n")
+  # Save the dictionary
+  Q_dict.save(Q, filename)
+  print("\nnew Q saved\n")
+  ct = ct + 1
+  print(f"\n{ct * num_episodes} initial episodes done, saving each {num_episodes} episodes\n")
+  
+  # # find and print the optimal graph up to now
+  # greedy_policy = make_epsilon_greedy_policy(Q=Q, epsilon=0.0, nA=env.nA)
+  # env.reset()
+  # while not env.done:
+  #   probs = greedy_policy(env.state)
+  #   action = np.random.choice(np.arange(len(probs)), p=probs)
+  #   #print(env.state)
+  #   #print(action)
+  #   state, reward, done = env.step(action)
+  #   #print(f"after action {action} we get state = {state}, reward = {reward}, done = {done}")
+  #   final_state = copy.deepcopy(env.state)
+  # graph = Graph(final_state[:number_of_edges])
+  # print(f"graph found by the greedy policy after {ct * num_episodes} episodes:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
+
+# MC training in batches of num_episodes, with lr schedule resetting after every batch
+while True:
+  # Find and print the optimal graph with the Q-greedy policy
+  greedy_policy = make_epsilon_greedy_policy(Q=Q, epsilon=0.0, n=env.action_space.n)
+  env.reset()
+  while not env.done:
+    probs = greedy_policy(env.state)
+    action = np.random.choice(np.arange(len(probs)), p=probs)
+    #print(env.state)
+    #print(action)
+    state, reward, done, _, _ = env.step(action)
+    #print(f"after action {action} we get state = {state}, reward = {reward}, done = {done}")
+    final_state = copy.deepcopy(env.state)
+  graph = Graph(final_state[:number_of_edges])
+  print(f"\ngraph found by the greedy policy after {ct * num_episodes} episodes in this last run:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
+  # Load Q
+  Q = Q_dict.load(filename)
+  print(f"\nold Q contained {len(Q)} states\n")
+  print(f"\nstarting MC\n")
+  Q, policy, episodes, Q_diff_norms = mc_control_epsilon_greedy(env, num_episodes, discount_factor=0.1, epsilon=1, schedule=schedule, max_steps=1000000, Q=Q, save=True)
+  print(f"\nafter batch #{ct+1} of {num_episodes} MC episodes, Q contains {len(Q)} states")
+  # Save the dictionary
+  Q_dict.save(Q, filename)
+  print("\nnew Q saved")
+  ct = ct + 1
+  print(f"{ct * num_episodes} episodes done in this 'while True' loop, saving each {num_episodes} episodes")
+  
+
+
+
+
+exit(0)
+
+# Find the graphs with max wagner score by brute force, this works up to number_of_nodes = 7.
+# The star is maximal between connected, the empty graph is maximal in all graphs. This info is
+# used to check whether MC is working.
+
+# def get_max_wagner_score_graph(all_graphs):
+#     max_wagner_score = float('-inf')  # Initialize with negative infinity
+#     max_wagner_score_graph = None
+#     max_wagner_score_connected = float('-inf')  # Initialize with negative infinity
+#     max_wagner_score_graph_connected = None
+
+#     for nx_graph in all_graphs:
+#         graph = Graph(nx_graph)
+#         wagner_score = graph.wagner1()
+#         if wagner_score > max_wagner_score:
+#             max_wagner_score = wagner_score
+#             max_wagner_score_graph = graph
+#         if graph.is_connected():
+#             wagner_score_connected = wagner_score
+#             if wagner_score_connected > max_wagner_score_connected:
+#                 max_wagner_score_connected = wagner_score_connected
+#                 max_wagner_score_connected_graph = graph
+
+#     return max_wagner_score_graph, max_wagner_score, max_wagner_score_connected_graph, max_wagner_score_connected
 
 # folder = "./graph_db/"
 # print(f"\nloading all graphs with {number_of_nodes} nodes")
@@ -285,75 +387,8 @@ def get_max_wagner_score_graph(all_graphs):
 #   graph = Graph(final_state[:number_of_edges])
 #   print(f"graph found by the greedy policy after {ct * num_episodes} episodes:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
 
-schedule=[2**n for n in range(10, int(np.log2(num_episodes)) + 1)]
-
-# lr_cuts = 5
-# schedule=[n for n in range(num_episodes // lr_cuts, num_episodes, num_episodes // lr_cuts)]
-print(schedule)
-
-filename = f'Q_dict_{number_of_nodes}.h5'
-Q_dict = QDictionary()
-Q = defaultdict(lambda: np.zeros(2))
-ct = 0
-# keyboard.on_press_key('s', show_adjacency(Q))
-
-# Load Q if it was previously written
-if not os.path.exists(filename):
-  print(f"\nfirst start of MC, Q is empty")
-  print(f"\nstarting MC for the first time with an empty Q for {num_episodes} episodes\n")
-  Q, policy, episodes, Q_diff_norms = mc_control_epsilon_greedy(env, num_episodes, discount_factor=0.1, epsilon=1, schedule=schedule, max_steps=1000000, save=True)
-  print(f"\nfirst MC done, now Q contains {len(Q)} states")
-  # Save the dictionary
-  Q_dict.save(Q, filename)
-  print("\nnew Q saved")
-  ct = ct + 1
-  print(f"{ct * num_episodes} episodes done up to now, saving each {num_episodes} episodes")
-  
-  # # find and print the optimal graph up to now
-  # greedy_policy = make_epsilon_greedy_policy(Q=Q, epsilon=0.0, nA=env.nA)
-  # env.reset()
-  # while not env.done:
-  #   probs = greedy_policy(env.state)
-  #   action = np.random.choice(np.arange(len(probs)), p=probs)
-  #   #print(env.state)
-  #   #print(action)
-  #   state, reward, done = env.step(action)
-  #   #print(f"after action {action} we get state = {state}, reward = {reward}, done = {done}")
-  #   final_state = copy.deepcopy(env.state)
-  # graph = Graph(final_state[:number_of_edges])
-  # print(f"graph found by the greedy policy after {ct * num_episodes} episodes:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
-
-while True:
-  # Load Q
-  Q = Q_dict.load(filename)
-  print(f"\nold Q contained {len(Q)} states")
-  print(f"\nstarting MC\n")
-  Q, policy, episodes, Q_diff_norms = mc_control_epsilon_greedy(env, num_episodes, discount_factor=0.1, epsilon=1, schedule=schedule, max_steps=1000000, Q=Q, save=True)
-  print(f"\nafter batch #{ct+1} of {num_episodes} MC episodes, Q contains {len(Q)} states")
-  # Save the dictionary
-  Q_dict.save(Q, filename)
-  print("\nnew Q saved")
-  ct = ct + 1
-  print(f"{ct * num_episodes} episodes done in this 'while True' loop, saving each {num_episodes} episodes")
-  
-  # find and print the optimal graph up to now
-  greedy_policy = make_epsilon_greedy_policy(Q=Q, epsilon=0.0, nA=env.nA)
-  env.reset()
-  while not env.done:
-    probs = greedy_policy(env.state)
-    action = np.random.choice(np.arange(len(probs)), p=probs)
-    #print(env.state)
-    #print(action)
-    state, reward, done = env.step(action)
-    #print(f"after action {action} we get state = {state}, reward = {reward}, done = {done}")
-    final_state = copy.deepcopy(env.state)
-  graph = Graph(final_state[:number_of_edges])
-  print(f"graph found by the greedy policy after {ct * num_episodes} episodes:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
 
 
-
-
-exit(0)
 
 states = [state for episode in episodes for state, _, _, _ in episode]
 #print("states done")

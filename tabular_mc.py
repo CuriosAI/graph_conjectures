@@ -3,23 +3,23 @@ import numpy as np
 import sys
 import copy
 
-def make_epsilon_greedy_policy(Q, epsilon, nA):
+def make_epsilon_greedy_policy(Q, epsilon, n):
     """
     Creates an epsilon-greedy policy based on a given Q-function and epsilon.
     
     Args:
         Q: A dictionary that maps from state -> action-values.
-            Each value is a numpy array of length nA, and states are assumed to be nparray and are casted to immutable tuple (see below)
+            Each value is a numpy array of length n, and states are assumed to be nparray and are casted to immutable tuple (see below)
         epsilon: The probability to select a random action . float between 0 and 1.
-        nA: Number of actions in the environment.
+        n: Number of actions in the environment.
     
     Returns:
         A function that takes the state as an argument and returns
-        the probabilities for each action in the form of a numpy array of length nA.
+        the probabilities for each action in the form of a numpy array of length n.
     
     """
     def policy_fn(state):
-        A = np.ones(nA, dtype=float) * epsilon / nA
+        A = np.ones(n, dtype=float) * epsilon / n
         best_action = np.argmax(Q[str(state)])
         A[best_action] += (1.0 - epsilon)
         return A
@@ -64,7 +64,7 @@ def mc_control_epsilon_greedy(env, num_episodes, discount_factor=1.0, epsilon=0.
     # Q = defaultdict(lambda: np.zeros(env.nA))
 
     # Initialize a dictionary to store the Q-value differences
-    Q_diff = defaultdict(lambda: np.zeros(env.nA))
+    Q_diff = defaultdict(lambda: np.zeros(env.action_space.n))
 
     # Initialize a list to store the norms of Q_diff after each episode
     Q_diff_norms = []
@@ -79,7 +79,7 @@ def mc_control_epsilon_greedy(env, num_episodes, discount_factor=1.0, epsilon=0.
         epsilon = epsilon_schedule(schedule, epsilon, i_episode)
 
         # The policy we're following
-        policy = make_epsilon_greedy_policy(Q, epsilon, env.nA)
+        policy = make_epsilon_greedy_policy(Q, epsilon, env.action_space.n)
 
         # Generate an episode.
         # An episode is a list of (state, action, reward, next_state) tuples
@@ -89,7 +89,8 @@ def mc_control_epsilon_greedy(env, num_episodes, discount_factor=1.0, epsilon=0.
             state = copy.deepcopy(env.state) # Backup the original state, before step modify it
             probs = policy(state)
             action = np.random.choice(np.arange(len(probs)), p=probs)
-            next_state, reward, done = env.step(action)
+            next_state, reward, done, _, _ = env.step(action)
+            #done = terminated or truncated
             next_state = copy.deepcopy(next_state) # Step updates env.state and returns it, thus next_state will change as soon as state changes at next step, so we deepcopy it
             episode.append((state, action, reward, next_state))
             if done:
