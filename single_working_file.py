@@ -45,7 +45,7 @@ import optuna
 # from feats_miner import feats_miner
 from envs import LinEnvMau, register_linenv#, LocEnv, GlobEnv
 from graph import Graph
-from optuna_objective import objective
+from optuna_objective import objective, save_best_params_wrapper
 from tabular_mc import mc_control_epsilon_greedy, make_epsilon_greedy_policy
 
 class QDictionary:
@@ -99,27 +99,33 @@ def data_collector(folder, num_nodes, connected):
 
 ################## prova PPO mau
 
-number_of_nodes = 4
+# # Check wagner1() for totally disconnected graphs
+# for number_of_nodes in range(2, 20):
+#   number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
 
-# gym.register(
-#     id='LinEnvMau-v0',
-#     entry_point='envs:LinEnvMau',
-#     kwargs={'number_of_nodes': number_of_nodes}
-# )
+#   register_linenv(number_of_nodes)
+#   env = gym.make('LinEnvMau-v0') 
 
+#   env.reset()
+#   env.render()
+
+#   #print(env.state[:number_of_edges])
+#   #env = LinEnvMau(number_of_nodes)
+#   # If the environment don't follow the interface, an error will be thrown
+
+#   # occhio che check_env modifica lo stato!!!
+#   #check_env(env, warn=True)
+
+#   #env.render()
+
+#   graph = Graph(env.state[:number_of_edges])
+#   print(graph.wagner1())
+
+
+number_of_nodes = 6
+number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
 register_linenv(number_of_nodes)
-env = gym.make('LinEnvMau-v0') 
-
-#env = LinEnvMau(number_of_nodes)
-# If the environment don't follow the interface, an error will be thrown
-check_env(env, warn=True)
-
-env.reset()
-#env.render()
-
-#sys.argv = ["python", "--algo", "ppo", "--env", "MountainCar-v0"]
-
-#sys.argv = ["python", "--algo", "ppo", "--env", 'LinEnvMau-v0', "--gym-packages", "envs", "--env-kwargs", f"number_of_nodes:{number_of_nodes}"]
+env = gym.make('LinEnvMau-v0')
 
 model = PPO('MlpPolicy', 'LinEnvMau-v0')
 # params = model.get_hyperparameters()
@@ -128,12 +134,25 @@ model = PPO('MlpPolicy', 'LinEnvMau-v0')
 
 # Create an Optuna study and optimize the hyperparameters
 study = optuna.create_study(direction='maximize')
-study.optimize(objective, n_trials=100)  # Adjust the number of trials as needed
+n_trials = 100000
+save_freq = 100
+assert save_freq <= n_trials, "save_freq should be smaller or equal to n_trials"
+
+study.optimize(objective, n_trials=n_trials, callbacks=[save_best_params_wrapper(save_freq)])  # Adjust the number of trials as needed
+
+#study.optimize(objective, n_trials=n_trials)  # Adjust the number of trials as needed
+
+# Get the best parameters
+best_params = study.best_params
+
+# # Save to a JSON file
+# with open('best_params.json', 'w') as f:
+#     json.dump(best_params, f)
+
+
 
 # Print the best hyperparameters
-print(study.best_params)
-
-
+print(f"\n\nAt the end of {n_trials} trials, the best parameters are:\n\n{best_params}. They have been saved in file best_params.json in local folder.")
 
 # sys.argv = ["python", "--algo", "ppo", "--env", 'LinEnvMau-v0']
 

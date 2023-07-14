@@ -119,7 +119,7 @@ def register_linenv(number_of_nodes):
   gym.register(
       id='LinEnvMau-v0',
       entry_point='envs:LinEnvMau',
-      kwargs={'number_of_nodes': 4}
+      kwargs={'number_of_nodes': number_of_nodes}
   )
 
 # class LinEnv(gym.Env):
