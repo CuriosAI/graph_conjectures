@@ -1,7 +1,11 @@
 import copy
 import numpy as np
+
 import gymnasium as gym
 from gymnasium import spaces
+# To register the environment
+from gym.envs.registration import register
+
 import networkx as nx
 import matplotlib.pyplot as plt
 
@@ -75,7 +79,7 @@ class LinEnvMau(gym.Env):
     # state, reward, reward, terminated, truncated, info.
     return copy.deepcopy(self.state), reward, self.done, False, info
 
-  def reset(self, seed=None, graph=None):
+  def reset(self, seed=None, graph=None, options=None):
 
     """
     Reset the environment to a new initial state with the given graph part.
@@ -102,6 +106,22 @@ class LinEnvMau(gym.Env):
   def render(self):
     Graph(self.state[:self.number_of_edges]).draw()
     
+# Register the environment
+# from gym.envs.registration import register
+
+# register(
+#     id='LinEnvMau-v0',
+#     #entry_point=__name__ + ':LinEnvMau',
+#     entry_point='envs:LinEnvMau',
+# )
+
+def register_linenv(number_of_nodes):
+  gym.register(
+      id='LinEnvMau-v0',
+      entry_point='envs:LinEnvMau',
+      kwargs={'number_of_nodes': 4}
+  )
+
 # class LinEnv(gym.Env):
 #     """
 #     LinEnv is a custom environment class that simulates a graph with no loops with a

@@ -36,11 +36,16 @@ import gymnasium as gym
 from gymnasium import spaces
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3 import PPO
+from rl_zoo3.train import train
+import optuna
+
 
 # my classes
 # from feats_miner import feats_miner
-from envs import LinEnvMau#, LocEnv, GlobEnv
+from envs import LinEnvMau, register_linenv#, LocEnv, GlobEnv
 from graph import Graph
+from optuna_objective import objective
 from tabular_mc import mc_control_epsilon_greedy, make_epsilon_greedy_policy
 
 class QDictionary:
@@ -94,13 +99,56 @@ def data_collector(folder, num_nodes, connected):
 
 ################## prova PPO mau
 
-number_of_nodes = 6
-env = LinEnvMau(number_of_nodes)
+number_of_nodes = 4
+
+# gym.register(
+#     id='LinEnvMau-v0',
+#     entry_point='envs:LinEnvMau',
+#     kwargs={'number_of_nodes': number_of_nodes}
+# )
+
+register_linenv(number_of_nodes)
+env = gym.make('LinEnvMau-v0') 
+
+#env = LinEnvMau(number_of_nodes)
 # If the environment don't follow the interface, an error will be thrown
 check_env(env, warn=True)
 
 env.reset()
 #env.render()
+
+#sys.argv = ["python", "--algo", "ppo", "--env", "MountainCar-v0"]
+
+#sys.argv = ["python", "--algo", "ppo", "--env", 'LinEnvMau-v0', "--gym-packages", "envs", "--env-kwargs", f"number_of_nodes:{number_of_nodes}"]
+
+model = PPO('MlpPolicy', 'LinEnvMau-v0')
+# params = model.get_hyperparameters()
+# print(params)
+
+
+# Create an Optuna study and optimize the hyperparameters
+study = optuna.create_study(direction='maximize')
+study.optimize(objective, n_trials=100)  # Adjust the number of trials as needed
+
+# Print the best hyperparameters
+print(study.best_params)
+
+
+
+# sys.argv = ["python", "--algo", "ppo", "--env", 'LinEnvMau-v0']
+
+# train()
+
+exit(0)
+
+
+
+#sys.argv = ["python", "--algo", "ppo", "--env", "MountainCar-v0"]
+sys.argv = ["python", "--algo", "ppo", "--env", 'LinEnvMau-v0', "--gym-packages", "envs"]
+
+train()
+
+exit(0)
 
 print(env.observation_space)
 print(env.action_space)
