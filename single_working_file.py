@@ -152,10 +152,6 @@ class EvalCallback(BaseCallback):
         return True
 
     def evaluate_final_state(self, model, env, n_eval_episodes=1, deterministic=True):
-        is_vec_env = isinstance(env, VecEnv)
-        old_env = env
-        env = env.envs[0] if is_vec_env else env
-
         rewards = []
         for _ in range(n_eval_episodes):
             obs = env.reset()
@@ -168,10 +164,6 @@ class EvalCallback(BaseCallback):
                 episode_rewards += reward
 
             rewards.append(episode_rewards)
-
-        if is_vec_env:
-            old_env.render()
-        else:
             env.render()
 
         mean_reward = np.mean(rewards)
