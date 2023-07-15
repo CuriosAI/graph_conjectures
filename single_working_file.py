@@ -37,6 +37,9 @@ from gymnasium import spaces
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3 import PPO
+from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.evaluation import evaluate_policy
+
 from rl_zoo3.train import train
 import optuna
 
@@ -125,11 +128,42 @@ def data_collector(folder, num_nodes, connected):
 number_of_nodes = 6
 number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
 register_linenv(number_of_nodes)
+
+# Load the best hyperparameters
+with open('best_params_after_30700_trials.json', 'r') as f:
+    best_params = json.load(f)
+
 env = gym.make('LinEnvMau-v0')
 
-model = PPO('MlpPolicy', 'LinEnvMau-v0')
+# Create the PPO agent with the best hyperparameters
+model = PPO('MlpPolicy', env, **best_params, verbose=1)
+
+class EvalCallback(BaseCallback):
+    def __init__(self, eval_env, eval_freq, verbose=1):
+        super(EvalCallback, self).__init__(verbose)
+        self.eval_env = eval_env
+        self.eval_freq = eval_freq
+
+    def _on_step(self) -> bool:
+        if self.n_calls % self.eval_freq == 0:
+            mean_reward, std_reward = evaluate_policy(self.model, self.eval_env, n_eval_episodes=100)
+            print(f"Mean reward: {mean_reward} +/- {std_reward}")
+
+        return True
+
+# Create the callback
+callback = EvalCallback(env, eval_freq=1000)
+
+# Train the agent
+model.learn(total_timesteps=50000, callback=callback)
+
+
+exit(0)
+
+#model = PPO('MlpPolicy', 'LinEnvMau-v0')
 # params = model.get_hyperparameters()
 # print(params)
+
 
 
 # Create an Optuna study and optimize the hyperparameters
