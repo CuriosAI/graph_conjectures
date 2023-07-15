@@ -38,7 +38,8 @@ from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.evaluation import evaluate_policy
+#from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.evaluation import _evaluate_episode
 
 from rl_zoo3.train import train
 import optuna
@@ -146,17 +147,49 @@ class EvalCallback(BaseCallback):
 
     def _on_step(self) -> bool:
         if self.n_calls % self.eval_freq == 0:
-            mean_reward, std_reward = evaluate_policy(self.model, self.eval_env, deterministic=True, n_eval_episodes=1)
+            mean_reward, std_reward = self.evaluate_final_state(self.model, self.eval_env, deterministic=True, n_eval_episodes=1)
             print(f"Mean reward: {mean_reward} at step {self.n_calls}")
 
         return True
+
+    def evaluate_final_state(self, model, env, n_eval_episodes=1, deterministic=True):
+        is_vec_env = isinstance(env, VecEnv)
+        old_env = env
+        env = env.envs[0] if is_vec_env else env
+
+        rewards = []
+        for _ in range(n_eval_episodes):
+            episode_rewards, _ = _evaluate_episode(env, model, deterministic)
+            rewards.append(sum(episode_rewards))
+            env.render()
+
+        mean_reward = np.mean(rewards)
+        std_reward = np.std(rewards)
+
+        if is_vec_env:
+            old_env.render()
+
+        return mean_reward, std_reward
+
+# This is simpler, use this if you do not need rendering the final state
+# class EvalCallback(BaseCallback):
+#     def __init__(self, eval_env, eval_freq, verbose=1):
+#         super(EvalCallback, self).__init__(verbose)
+#         self.eval_env = eval_env
+#         self.eval_freq = eval_freq
+
+#     def _on_step(self) -> bool:
+#         if self.n_calls % self.eval_freq == 0:
+#             mean_reward, std_reward = evaluate_policy(self.model, self.eval_env, deterministic=True, render=True, n_eval_episodes=1)
+#             print(f"Mean reward: {mean_reward} at step {self.n_calls}")
+
+#         return True
 
 # Create the callback
 callback = EvalCallback(env, eval_freq=1000, verbose=1)
 
 # Train the agent
 model.learn(total_timesteps=50000, callback=callback)
-
 
 exit(0)
 
