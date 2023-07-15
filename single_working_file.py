@@ -39,7 +39,6 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 #from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.evaluation import _evaluate_episode
 
 from rl_zoo3.train import train
 import optuna
