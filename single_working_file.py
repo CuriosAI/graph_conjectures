@@ -130,7 +130,7 @@ number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
 register_linenv(number_of_nodes)
 
 # Load the best hyperparameters
-with open('best_params_after_30700_trials.json', 'r') as f:
+with open('best_params_after_7900_trials.json', 'r') as f:
     best_params = json.load(f)
 
 env = gym.make('LinEnvMau-v0')
@@ -152,7 +152,7 @@ class EvalCallback(BaseCallback):
         return True
 
 # Create the callback
-callback = EvalCallback(env, eval_freq=1000)
+callback = EvalCallback(env, eval_freq=1000, verbose=0)
 
 # Train the agent
 model.learn(total_timesteps=50000, callback=callback)
