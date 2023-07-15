@@ -159,15 +159,24 @@ class EvalCallback(BaseCallback):
 
         rewards = []
         for _ in range(n_eval_episodes):
-            episode_rewards, _ = _evaluate_episode(env, model, deterministic)
-            rewards.append(sum(episode_rewards))
+            obs = env.reset()
+            done = False
+            episode_rewards = 0.0
+
+            while not done:
+                action, _ = model.predict(obs, deterministic=deterministic)
+                obs, reward, done, info = env.step(action)
+                episode_rewards += reward
+
+            rewards.append(episode_rewards)
+
+        if is_vec_env:
+            old_env.render()
+        else:
             env.render()
 
         mean_reward = np.mean(rewards)
         std_reward = np.std(rewards)
-
-        if is_vec_env:
-            old_env.render()
 
         return mean_reward, std_reward
 
