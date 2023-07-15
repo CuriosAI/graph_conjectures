@@ -136,7 +136,7 @@ with open('best_params_after_7900_trials.json', 'r') as f:
 env = gym.make('LinEnvMau-v0')
 
 # Create the PPO agent with the best hyperparameters
-model = PPO('MlpPolicy', env, **best_params, verbose=1)
+model = PPO('MlpPolicy', env, **best_params, verbose=0)
 
 class EvalCallback(BaseCallback):
     def __init__(self, eval_env, eval_freq, verbose=1):
@@ -152,7 +152,7 @@ class EvalCallback(BaseCallback):
         return True
 
 # Create the callback
-callback = EvalCallback(env, eval_freq=1000, verbose=0)
+callback = EvalCallback(env, eval_freq=1000, verbose=1)
 
 # Train the agent
 model.learn(total_timesteps=50000, callback=callback)
