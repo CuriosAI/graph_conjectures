@@ -132,6 +132,9 @@ register_linenv(number_of_nodes)
 # Load the best hyperparameters
 with open('best_params_after_7900_trials.json', 'r') as f:
     best_params = json.load(f)
+print(best_params)
+
+input("Press Enter to continue...")
 
 env = gym.make('LinEnvMau-v0')
 
@@ -192,7 +195,8 @@ eval_env = gym.make('LinEnvMau-v0')
 callback = EvalCallback(eval_env, eval_freq=1000, verbose=1)
 
 # Train the agent
-model.learn(total_timesteps=50000, callback=callback)
+#model.learn(total_timesteps=50000, callback=callback)
+model.learn(total_timesteps=500000, verbose=1)
 
 exit(0)
 
