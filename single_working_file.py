@@ -137,12 +137,13 @@ print(best_params)
 best_params = {'learning_rate': 0.0019177642127136514, 'n_steps': 32, 'batch_size': 64, 'n_epochs': 25, 'gamma': 0.931244023824517, 'gae_lambda': 0.97327859546964, 'clip_range': 0.3, 'ent_coef': 0.004418614730618034}
 
 print(best_params)
-input("Press Enter to continue...")
+#input("Press Enter to continue...")
 
 env = gym.make('LinEnvMau-v0')
 
 # Create the PPO agent with the best hyperparameters
-model = PPO('MlpPolicy', env, **best_params, verbose=1)
+#model = PPO('MlpPolicy', env, **best_params, verbose=1)
+model = PPO('MlpPolicy', env, verbose=1)
 
 # class EvalCallback(BaseCallback):
 #     def __init__(self, eval_env, eval_freq, verbose=1):
@@ -184,7 +185,7 @@ model = PPO('MlpPolicy', env, **best_params, verbose=1)
 # callback = EvalCallback(eval_env, eval_freq=1000, verbose=1)
 
 # Train the agent
-train_steps = 500000
+train_steps = 10000000
 #model.learn(total_timesteps=50000, callback=callback)
 model.learn(total_timesteps=train_steps)
 

@@ -53,7 +53,7 @@ def objective(trial):
         obs = env.reset()
         done = False
         while not done:
-            action, _ = model.predict(obs)
+            action, _ = model.predict(obs) # se mettiamo deterministic=true, togliamo i 100 episodi per sveltire
             obs, reward, done, _ = env.step(action)
             reward_sum += reward
 
