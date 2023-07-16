@@ -161,15 +161,17 @@ class EvalCallback(BaseCallback):
             while not done:
                 action, _ = model.predict(obs, deterministic=deterministic)
                 obs, reward, done, info = env.step(action)
-                episode_rewards += reward
+                print(reward)
+                #episode_rewards += reward
 
-            rewards.append(episode_rewards)
-            env.render()
+            #rewards.append(episode_rewards)
+            #env.render()
 
-        mean_reward = np.mean(rewards)
-        std_reward = np.std(rewards)
+        #mean_reward = np.mean(rewards)
+        #std_reward = np.std(rewards)
 
-        return mean_reward, std_reward
+        # return mean_reward, std_reward
+        return 1, 2
 
 # This is simpler, use this if you do not need rendering the final state
 # class EvalCallback(BaseCallback):
