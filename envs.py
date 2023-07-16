@@ -19,7 +19,7 @@ class LinEnvMau(gym.Env):
   REMOVE = 0
   INSERT = 1
 
-  def __init__(self, number_of_nodes):
+  def __init__(self, number_of_nodes, normalize_reward):
 
     super(LinEnvMau, self).__init__()
     self.action_space = spaces.Discrete(2)
@@ -27,6 +27,7 @@ class LinEnvMau(gym.Env):
     self.number_of_nodes = number_of_nodes
     self.number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
     self.observation_space = spaces.MultiBinary(2 * self.number_of_edges)
+    self.normalize_reward = normalize_reward # Normalize rewards when training, not when evaluating
     self.reset() # here self.state is created
 
   def step(self, action):
@@ -61,7 +62,7 @@ class LinEnvMau(gym.Env):
       reward = 0.0
     elif not Graph(graph).is_connected():
       #reward = float('-inf')
-      reward = -3.0 # penalty to be used when the conjecture holds only for connected graphs
+      reward = -1.0 if self.normalize_reward else -5.0 # penalty to be used when the conjecture holds only for connected graphs. this normalization assumes that other rewards are > -1
       #reward = 0.0
       # make_vec_env resets automatically when a done signal is encountered
       # we use info to pass the terminal state
@@ -69,7 +70,7 @@ class LinEnvMau(gym.Env):
       # info['terminal_state'] = copy.deepcopy(self.state) # not needed, because make_vec_env already does this
     else:
     # print(f"reward term = {Graph(graph).wagner1()}")
-      reward = Graph(graph).wagner1()
+      reward = Graph(graph).wagner1()/self.number_of_nodes if self.normalize_reward else Graph(graph).wagner1()
       # make_vec_env resets automatically when a done signal is encountered
       # we use info to pass the terminal state
       info = {}
@@ -115,12 +116,16 @@ class LinEnvMau(gym.Env):
 #     entry_point='envs:LinEnvMau',
 # )
 
-def register_linenv(number_of_nodes):
+# def register_linenv(number_of_nodes):
+def register_linenv(number_of_nodes, normalize_reward):
+  # id=f'LinEnvMau-{number_of_nodes}_nodes-normalize_{normalize_reward}'
   gym.register(
-      id='LinEnvMau-v0',
+      # id=id,
+      id='LinEnvMau-v0', # this name is hard-coded in rl_zoo3/hyperparams/ppo.yml, we cannot change it
       entry_point='envs:LinEnvMau',
-      kwargs={'number_of_nodes': number_of_nodes}
+      kwargs={'number_of_nodes': number_of_nodes, 'normalize_reward': normalize_reward}
   )
+  # return id
 
 # class LinEnv(gym.Env):
 #     """

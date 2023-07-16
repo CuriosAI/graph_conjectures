@@ -190,7 +190,9 @@ class RewardNormalizer(gym.Wrapper):
 
 number_of_nodes = 5
 number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
-register_linenv(number_of_nodes)
+# register_linenv(number_of_nodes)
+# id = register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True)
+register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True) # this register 'LinEnvMau-v0', we cannot change it because it is hard-coded in rl_zoo3/hyperparams/ppo.yml
 
 # # Load the best hyperparameters
 # with open('best_params_after_7900_trials.json', 'r') as f:
@@ -203,8 +205,34 @@ register_linenv(number_of_nodes)
 # #input("Press Enter to continue...")
 
 env = gym.make('LinEnvMau-v0')
+
+print(env.normalize_reward)
+
+# n_eval_episodes = 1
+# rewards = []
+# rewards = []
+# for _ in range(n_eval_episodes):
+#     state, _ = env.reset()
+#     done = False
+#     episode_rewards = 0.0
+
+#     while not done:
+#         action = 0
+#         state, reward, done, _, _ = env.step(action)
+#         episode_rewards += reward
+
+#     rewards.append(episode_rewards)
+#     # env.render()
+#     graph = Graph(state[:number_of_edges])
+#     print(f"graph found:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
+
+# mean_reward = np.mean(rewards)
+# std_reward = np.std(rewards)
+
+# print(mean_reward)
+
 #min_reward = min_wagner_score_connected_list[number_of_nodes]
-normalized_env = RewardNormalizer(env, min_reward=-3)
+# normalized_env = RewardNormalizer(env, min_reward=-3)
 
 # class EvalCallback(BaseCallback):
 #     def __init__(self, eval_env, eval_freq, verbose=1):
@@ -297,12 +325,10 @@ normalized_env = RewardNormalizer(env, min_reward=-3)
 # with open('best_params.json', 'w') as f:
 #     json.dump(best_params, f)
 
-
-
 # # Print the best hyperparameters
 # print(f"\n\nAt the end of {n_trials} trials, the best parameters are:\n\n{best_params}. They have been saved in file best_params.json in local folder.")
 
-sys.argv = ["python", "--algo", "ppo", "--env", 'LinEnvMau-v0', "-n", "10000", "--optimize", "--n-trials", "1000", "--n-jobs", "28", "--sampler", "tpe", "--pruner", "median", "--progress"]
+sys.argv = ["python", "--algo", "ppo", "--env", 'LinEnvMau-v0', "-n", "1000", "--optimize", "--n-trials", "50000", "--n-jobs", "56", "--sampler", "tpe", "--pruner", "median", "--progress"]
 
 train()
 
