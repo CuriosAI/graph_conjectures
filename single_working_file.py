@@ -184,7 +184,7 @@ model = PPO('MlpPolicy', env, **best_params, verbose=1)
 # callback = EvalCallback(eval_env, eval_freq=1000, verbose=1)
 
 # Train the agent
-train_steps = 5000
+train_steps = 500000
 #model.learn(total_timesteps=50000, callback=callback)
 model.learn(total_timesteps=train_steps)
 
