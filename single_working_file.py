@@ -147,8 +147,8 @@ class EvalCallback(BaseCallback):
     def _on_step(self) -> bool:
         if self.n_calls % self.eval_freq == 0:
             print(self.n_calls)
-            mean_reward, std_reward = self.evaluate_final_state(self.model, self.eval_env, deterministic=True, n_eval_episodes=1)
-            print(f"Mean reward: {mean_reward} at step {self.n_calls}")
+            # mean_reward, std_reward = self.evaluate_final_state(self.model, self.eval_env, deterministic=True, n_eval_episodes=1)
+            # print(f"Mean reward: {mean_reward} at step {self.n_calls}")
 
         return True
 
