@@ -154,17 +154,19 @@ class EvalCallback(BaseCallback):
     def evaluate_final_state(self, model, env, n_eval_episodes=10, deterministic=True):
         rewards = []
         for _ in range(n_eval_episodes):
-            obs, _ = env.reset()
+            state, _ = env.reset()
             done = False
             episode_rewards = 0.0
 
             while not done:
-                action, _ = model.predict(obs, deterministic=deterministic)
-                obs, reward, done, _, _ = env.step(action)
+                action, _ = model.predict(state, deterministic=deterministic)
+                state, reward, done, _, _ = env.step(action)
                 episode_rewards += reward
 
             rewards.append(episode_rewards)
-            env.render()
+            # env.render()
+            graph = Graph(state[:number_of_edges])
+            print(f"graph found by PPO:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
 
         mean_reward = np.mean(rewards)
         std_reward = np.std(rewards)
