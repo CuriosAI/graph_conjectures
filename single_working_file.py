@@ -302,7 +302,7 @@ normalized_env = RewardNormalizer(env, min_reward=-3)
 # # Print the best hyperparameters
 # print(f"\n\nAt the end of {n_trials} trials, the best parameters are:\n\n{best_params}. They have been saved in file best_params.json in local folder.")
 
-sys.argv = ["python", "--algo", "ppo", "--env", 'LinEnvMau-v0', "-n", "10000", "--optimize", "--n-trials", "1000", "--n-jobs", "2", "--sampler", "tpe", "--pruner", "median", "--progress"]
+sys.argv = ["python", "--algo", "ppo", "--env", 'LinEnvMau-v0', "-n", "10000", "--optimize", "--n-trials", "1000", "--n-jobs", "28", "--sampler", "tpe", "--pruner", "median", "--progress"]
 
 train()
 
