@@ -61,7 +61,7 @@ class LinEnvMau(gym.Env):
       reward = 0.0
     elif not Graph(graph).is_connected():
       #reward = float('-inf')
-      reward = -10.0 # penalty to be used when the conjecture holds only for connected graphs
+      reward = -3.0 # penalty to be used when the conjecture holds only for connected graphs
       #reward = 0.0
       # make_vec_env resets automatically when a done signal is encountered
       # we use info to pass the terminal state

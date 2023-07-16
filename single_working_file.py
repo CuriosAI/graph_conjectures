@@ -22,6 +22,7 @@ import itertools as it
 import random
 import scipy.sparse as sp
 # import keyboard
+import pickle
 
 import json
 import pathlib
@@ -43,12 +44,11 @@ from stable_baselines3.common.callbacks import BaseCallback
 from rl_zoo3.train import train
 import optuna
 
-
 # my classes
 # from feats_miner import feats_miner
 from envs import LinEnvMau, register_linenv#, LocEnv, GlobEnv
 from graph import Graph
-from optuna_objective import objective, save_best_params_wrapper
+from optuna_objective import objective_sb3, save_best_params_wrapper
 from tabular_mc import mc_control_epsilon_greedy, make_epsilon_greedy_policy
 
 class QDictionary:
@@ -100,6 +100,69 @@ def data_collector(folder, num_nodes, connected):
 ###############################
 
 
+# Find the graphs with max wagner score by brute force, this works up to number_of_nodes = 7.
+# The star is maximal between connected, the empty graph is maximal in all graphs. This info is used to check whether MC is working.
+
+def get_max_wagner_score_graph(all_graphs):
+    max_wagner_score = float('-inf')  # Initialize with negative infinity
+    max_wagner_score_graph = None
+    max_wagner_score_connected = float('-inf')  # Initialize with negative infinity
+    max_wagner_score_graph_connected = None
+
+    for nx_graph in all_graphs:
+        graph = Graph(nx_graph)
+        wagner_score = graph.wagner1()
+        if wagner_score > max_wagner_score:
+            max_wagner_score = wagner_score
+            max_wagner_score_graph = graph
+        if graph.is_connected():
+            wagner_score_connected = wagner_score
+            if wagner_score_connected > max_wagner_score_connected:
+                max_wagner_score_connected = wagner_score_connected
+                max_wagner_score_connected_graph = graph
+
+    return max_wagner_score_graph, max_wagner_score, max_wagner_score_connected_graph, max_wagner_score_connected
+
+def compute_min_max_wagner_scores_connected(number_of_nodes):
+    number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
+
+    folder = "./graph_db/"
+    print(f"\nloading all graphs with {number_of_nodes} nodes")
+    all_graphs = data_collector(folder, number_of_nodes, False)
+    print("\ndone")
+
+    wagner_scores_connected = [Graph(nx_graph).wagner1() for nx_graph in all_graphs if nx.is_connected(nx_graph)]
+    # sorted_wagner_scores = sorted(wagner_scores, key=lambda x: x, reverse=True)
+    sorted_wagner_scores_connected = sorted(wagner_scores_connected)
+
+    min_wagner_score_connected = sorted_wagner_scores_connected[0] if sorted_wagner_scores_connected else None
+    max_wagner_score_connected = sorted_wagner_scores_connected[-1] if sorted_wagner_scores_connected else None
+
+    print("\nwagner scores done")
+
+    # print(sorted_wagner_scores_connected)
+
+    # print(min_wagner_score_connected, max_wagner_score_connected)
+
+    return min_wagner_score_connected, max_wagner_score_connected
+
+# min_wagner_score_connected_list = []
+# for number_of_nodes in range(3, 8):
+#     min_wagner_score_connected, _ = compute_min_max_wagner_scores_connected(number_of_nodes)
+#     min_wagner_score_connected_list.append(min_wagner_score_connected)
+
+# print(min_wagner_score_connected_list)
+
+class RewardNormalizer(gym.Wrapper):
+    def __init__(self, env, min_reward):
+        super().__init__(env)
+        self.min_reward = abs(min_reward)
+
+    def step(self, action):
+        obs, reward, done, _, info = self.env.step(action)
+        normalized_reward = reward / self.min_reward
+        return obs, normalized_reward, done, False, info
+
 ################## prova PPO mau
 
 # # Check wagner1() for totally disconnected graphs
@@ -125,25 +188,23 @@ def data_collector(folder, num_nodes, connected):
 #   print(graph.wagner1())
 
 
-number_of_nodes = 6
+number_of_nodes = 5
 number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
 register_linenv(number_of_nodes)
 
-# Load the best hyperparameters
-with open('best_params_after_7900_trials.json', 'r') as f:
-    best_params = json.load(f)
-print(best_params)
+# # Load the best hyperparameters
+# with open('best_params_after_7900_trials.json', 'r') as f:
+#     best_params = json.load(f)
+# print(best_params)
 
-best_params = {'learning_rate': 0.0019177642127136514, 'n_steps': 32, 'batch_size': 64, 'n_epochs': 25, 'gamma': 0.931244023824517, 'gae_lambda': 0.97327859546964, 'clip_range': 0.3, 'ent_coef': 0.004418614730618034}
+# best_params = {'learning_rate': 0.0019177642127136514, 'n_steps': 32, 'batch_size': 64, 'n_epochs': 25, 'gamma': 0.931244023824517, 'gae_lambda': 0.97327859546964, 'clip_range': 0.3, 'ent_coef': 0.004418614730618034}
 
-print(best_params)
-#input("Press Enter to continue...")
+# print(best_params)
+# #input("Press Enter to continue...")
 
 env = gym.make('LinEnvMau-v0')
-
-# Create the PPO agent with the best hyperparameters
-#model = PPO('MlpPolicy', env, **best_params, verbose=1)
-model = PPO('MlpPolicy', env, verbose=1)
+#min_reward = min_wagner_score_connected_list[number_of_nodes]
+normalized_env = RewardNormalizer(env, min_reward=-3)
 
 # class EvalCallback(BaseCallback):
 #     def __init__(self, eval_env, eval_freq, verbose=1):
@@ -184,51 +245,53 @@ model = PPO('MlpPolicy', env, verbose=1)
 # eval_env = gym.make('LinEnvMau-v0')
 # callback = EvalCallback(eval_env, eval_freq=1000, verbose=1)
 
-# Train the agent
-train_steps = 10000000
-#model.learn(total_timesteps=50000, callback=callback)
-model.learn(total_timesteps=train_steps)
+# train_steps = 1000000
 
-# Test the trained agent
-state, _ = env.reset()
-for step in range(number_of_edges):
-    action, _ = model.predict(state, deterministic=True)
-    print(f"Step {step}")
-    print("Action: ", action)
-    state, reward, done, _, info = env.step(action)
-    print("state=", state, "reward=", reward, "done=", done, "info", info)
-    #env.render()
-    if done:
-        # Note that the VecEnv resets automatically
-        # when a done signal is encountered
-        print("Goal reached!", "reward=", reward)
-        # env.render()
-        graph = Graph(state[:number_of_edges])
-        print(f"\ngraph found by PPO after {train_steps} steps:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
-        break
-    
+# # Create the PPO agent with the best hyperparameters
+# #model = PPO('MlpPolicy', env, **best_params, verbose=1)
 
+# #params = {'learning_rate': 0.0019177642127136514, 'n_steps': 32, 'batch_size': 64, 'n_epochs': 25, 'gamma': 0.931244023824517, 'gae_lambda': 0.97327859546964, 'clip_range': 0.3, 'ent_coef': 0.01}
 
-exit(0)
+# model = PPO('MlpPolicy', normalized_env, verbose=1)
+
+# # Train the agent
+# #model.learn(total_timesteps=50000, callback=callback)
+# model.learn(total_timesteps=train_steps)
+
+# # Test the trained agent
+# state, _ = env.reset()
+# for step in range(number_of_edges):
+#     action, _ = model.predict(state, deterministic=True)
+#     # print(f"Step {step}")
+#     # print("Action: ", action)
+#     state, reward, done, _, info = env.step(action)
+#     # print("state=", state, "reward=", reward, "done=", done, "info", info)
+#     #env.render()
+#     if done:
+#         # Note that the VecEnv resets automatically
+#         # when a done signal is encountered
+#         # print("Goal reached!", "reward=", reward)
+#         # env.render()
+#         graph = Graph(state[:number_of_edges])
+#         print(f"\ngraph found by PPO after {train_steps} steps:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
+#         break
 
 #model = PPO('MlpPolicy', 'LinEnvMau-v0')
 # params = model.get_hyperparameters()
 # print(params)
 
+# # Create an Optuna study and optimize the hyperparameters
+# study = optuna.create_study(direction='maximize')
+# n_trials = 50000
+# save_freq = 1000
+# assert save_freq <= n_trials, "save_freq should be smaller or equal to n_trials"
 
+# study.optimize(objective_sb3, n_trials=n_trials, callbacks=[save_best_params_wrapper(save_freq)])  # Adjust the number of trials as needed
 
-# Create an Optuna study and optimize the hyperparameters
-study = optuna.create_study(direction='maximize')
-n_trials = 100000
-save_freq = 100
-assert save_freq <= n_trials, "save_freq should be smaller or equal to n_trials"
+# #study.optimize(objective, n_trials=n_trials)  # Adjust the number of trials as needed
 
-study.optimize(objective, n_trials=n_trials, callbacks=[save_best_params_wrapper(save_freq)])  # Adjust the number of trials as needed
-
-#study.optimize(objective, n_trials=n_trials)  # Adjust the number of trials as needed
-
-# Get the best parameters
-best_params = study.best_params
+# # Get the best parameters
+# best_params = study.best_params
 
 # # Save to a JSON file
 # with open('best_params.json', 'w') as f:
@@ -236,12 +299,28 @@ best_params = study.best_params
 
 
 
-# Print the best hyperparameters
-print(f"\n\nAt the end of {n_trials} trials, the best parameters are:\n\n{best_params}. They have been saved in file best_params.json in local folder.")
+# # Print the best hyperparameters
+# print(f"\n\nAt the end of {n_trials} trials, the best parameters are:\n\n{best_params}. They have been saved in file best_params.json in local folder.")
 
-# sys.argv = ["python", "--algo", "ppo", "--env", 'LinEnvMau-v0']
+sys.argv = ["python", "--algo", "ppo", "--env", 'LinEnvMau-v0', "-n", "10000", "--optimize", "--n-trials", "1000", "--n-jobs", "2", "--sampler", "tpe", "--pruner", "median", "--progress"]
 
-# train()
+train()
+
+# # Load the study object
+# with open('logs/ppo/report_LinEnvMau-v0_10-trials-5000-tpe-median_1689520619.pkl', 'rb') as f:
+#     study = pickle.load(f)
+
+# # Print the best value and parameters
+# print(study.best_value)
+# print(study.best_params)
+
+
+# # Load the hyperparameters
+# with open('logs/ppo/LinEnvMau-v0_ppo_hyperparams.json', 'r') as f:
+#     hyperparams = json.load(f)
+
+# print(hyperparams)
+
 
 exit(0)
 
