@@ -153,7 +153,7 @@ class EvalCallback(BaseCallback):
             episode_rewards = 0.0
 
             while not done:
-              action, _ = model.predict(obs, deterministic=deterministic)
+              action, _ = model.predict(obs, deterministic=True)
               print(action)
               obs, reward, done, info = self.eval_env.step(action)
               print(reward)
