@@ -191,7 +191,8 @@ class EvalCallback(BaseCallback):
 #         return True
 
 # Create the callback
-callback = EvalCallback(env, eval_freq=1000, verbose=1)
+eval_env = gym.make('LinEnvMau-v0')
+callback = EvalCallback(eval_env, eval_freq=1000, verbose=1)
 
 # Train the agent
 model.learn(total_timesteps=50000, callback=callback)
