@@ -144,42 +144,6 @@ env = gym.make('LinEnvMau-v0')
 # Create the PPO agent with the best hyperparameters
 model = PPO('MlpPolicy', env, **best_params, verbose=1)
 
-class EvalCallback(BaseCallback):
-    def __init__(self, eval_env, eval_freq, verbose=1):
-        super(EvalCallback, self).__init__(verbose)
-        self.eval_env = eval_env
-        self.eval_freq = eval_freq
-
-    def _on_step(self) -> bool:
-        if self.n_calls % self.eval_freq == 0:
-            mean_reward, std_reward = self.evaluate_final_state(self.model, self.eval_env, deterministic=True, n_eval_episodes=1)
-            print(f"Mean reward: {mean_reward} at step {self.n_calls}")
-
-        return True
-
-    def evaluate_final_state(self, model, env, n_eval_episodes=10, deterministic=True):
-        rewards = []
-        for _ in range(n_eval_episodes):
-            state, _ = env.reset()
-            done = False
-            episode_rewards = 0.0
-
-            while not done:
-                action, _ = model.predict(state, deterministic=deterministic)
-                state, reward, done, _, _ = env.step(action)
-                episode_rewards += reward
-
-            rewards.append(episode_rewards)
-            # env.render()
-            graph = Graph(state[:number_of_edges])
-            print(f"graph found by PPO:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
-
-        mean_reward = np.mean(rewards)
-        std_reward = np.std(rewards)
-
-        return mean_reward, std_reward
-
-# This is simpler, use this if you do not need rendering the final state
 # class EvalCallback(BaseCallback):
 #     def __init__(self, eval_env, eval_freq, verbose=1):
 #         super(EvalCallback, self).__init__(verbose)
@@ -188,18 +152,60 @@ class EvalCallback(BaseCallback):
 
 #     def _on_step(self) -> bool:
 #         if self.n_calls % self.eval_freq == 0:
-#             mean_reward, std_reward = evaluate_policy(self.model, self.eval_env, deterministic=True, render=True, n_eval_episodes=1)
+#             mean_reward, std_reward = self.evaluate_final_state(self.model, self.eval_env, deterministic=True, n_eval_episodes=1)
 #             print(f"Mean reward: {mean_reward} at step {self.n_calls}")
 
 #         return True
 
+#     def evaluate_final_state(self, model, env, n_eval_episodes=10, deterministic=True):
+#         rewards = []
+#         for _ in range(n_eval_episodes):
+#             state, _ = env.reset()
+#             done = False
+#             episode_rewards = 0.0
+
+#             while not done:
+#                 action, _ = model.predict(state, deterministic=deterministic)
+#                 state, reward, done, _, _ = env.step(action)
+#                 episode_rewards += reward
+
+#             rewards.append(episode_rewards)
+#             # env.render()
+#             graph = Graph(state[:number_of_edges])
+#             print(f"graph found by PPO:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
+
+#         mean_reward = np.mean(rewards)
+#         std_reward = np.std(rewards)
+
+#         return mean_reward, std_reward
+
 # Create the callback
-eval_env = gym.make('LinEnvMau-v0')
-callback = EvalCallback(eval_env, eval_freq=1000, verbose=1)
+# eval_env = gym.make('LinEnvMau-v0')
+# callback = EvalCallback(eval_env, eval_freq=1000, verbose=1)
 
 # Train the agent
 #model.learn(total_timesteps=50000, callback=callback)
-model.learn(total_timesteps=500000)
+model.learn(total_timesteps=5000)
+
+# Test the trained agent
+state, _ = env.reset()
+for step in range(number_of_edges):
+    action, _ = model.predict(state, deterministic=True)
+    print(f"Step {step}")
+    print("Action: ", action)
+    state, reward, done, _, info = env.step(action)
+    print("state=", state, "reward=", reward, "done=", done, "info", info)
+    #env.render()
+    if done:
+        # Note that the VecEnv resets automatically
+        # when a done signal is encountered
+        print("Goal reached!", "reward=", reward)
+        # env.render()
+        graph = Graph(state[:number_of_edges])
+        print(f"\ngraph found by PPO after {train_steps} steps:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
+        break
+    
+
 
 exit(0)
 
