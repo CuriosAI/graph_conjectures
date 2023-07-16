@@ -146,52 +146,30 @@ class EvalCallback(BaseCallback):
 
     def _on_step(self) -> bool:
         if self.n_calls % self.eval_freq == 0:
-            print(self.n_calls)
-            obs = self.eval_env.reset()
-            print(obs)
-            done = False
-            episode_rewards = 0.0
-
-            while not done:
-              action, _ = model.predict(obs, deterministic=True)
-              print(action)
-              obs, reward, done, info = self.eval_env.step(action)
-              print(reward)
-              #episode_rewards += reward
-
-              #rewards.append(episode_rewards)
-              #env.render()
-
-          #mean_reward = np.mean(rewards)
-          #std_reward = np.std(rewards)
-              # mean_reward, std_reward = self.evaluate_final_state(self.model, self.eval_env, deterministic=True, n_eval_episodes=1)
-            # print(f"Mean reward: {mean_reward} at step {self.n_calls}")
+            mean_reward, std_reward = self.evaluate_final_state(self.model, self.eval_env, deterministic=True, n_eval_episodes=1)
+            print(f"Mean reward: {mean_reward} at step {self.n_calls}")
 
         return True
 
-    def evaluate_final_state(self, model, env, n_eval_episodes=1, deterministic=True):
+    def evaluate_final_state(self, model, env, n_eval_episodes=10, deterministic=True):
         rewards = []
         for _ in range(n_eval_episodes):
-            obs = env.reset()
-            print(obs)
+            obs, _ = env.reset()
             done = False
             episode_rewards = 0.0
 
             while not done:
                 action, _ = model.predict(obs, deterministic=deterministic)
-                print(action)
-                obs, reward, done, info = env.step(action)
-                print(reward)
-                #episode_rewards += reward
+                obs, reward, done, _, _ = env.step(action)
+                episode_rewards += reward
 
-            #rewards.append(episode_rewards)
-            #env.render()
+            rewards.append(episode_rewards)
+            env.render()
 
-        #mean_reward = np.mean(rewards)
-        #std_reward = np.std(rewards)
+        mean_reward = np.mean(rewards)
+        std_reward = np.std(rewards)
 
-        # return mean_reward, std_reward
-        return 1, 2
+        return mean_reward, std_reward
 
 # This is simpler, use this if you do not need rendering the final state
 # class EvalCallback(BaseCallback):
