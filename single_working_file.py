@@ -1,19 +1,3 @@
-# import torch
-# import torch.nn as nn
-# import torch.optim as optim
-# import torch.nn.functional as functionals
-# from torch.utils.data import DataLoader, TensorDataset, random_split
-# from torchsummary import summary
-
-# import torch_geometric
-# from torch_geometric.utils import from_networkx
-
-# import gymnasium as gym
-
-# from sklearn.model_selection import KFold, StratifiedKFold, cross_val_score, train_test_split
-# from sklearn.neural_network import MLPClassifier, MLPRegressor
-# from sklearn.metrics import log_loss, mean_squared_error
-
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
@@ -21,7 +5,6 @@ import math
 import itertools as it
 import random
 import scipy.sparse as sp
-# import keyboard
 import pickle
 
 import json
@@ -37,8 +20,10 @@ import gymnasium as gym
 from gymnasium import spaces
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO, DQN
 from stable_baselines3.common.callbacks import BaseCallback
+# from stable_baselines3.common.results_plotter import load_results, ts2xy
+
 #from stable_baselines3.common.evaluation import evaluate_policy
 
 from rl_zoo3.train import train
@@ -163,6 +148,114 @@ class RewardNormalizer(gym.Wrapper):
         normalized_reward = reward / self.min_reward
         return obs, normalized_reward, done, False, info
 
+class EvalCallback(BaseCallback):
+    def __init__(self, eval_env, eval_freq, verbose=1):
+        super(EvalCallback, self).__init__(verbose)
+        self.eval_env = eval_env
+        self.eval_freq = eval_freq
+
+    def _on_step(self) -> bool:
+        if self.n_calls % self.eval_freq == 0:
+            mean_reward, std_reward = self.evaluate_final_state(self.model, self.eval_env, deterministic=True, n_eval_episodes=1)
+            print(f"Mean reward: {mean_reward} at step {self.n_calls}")
+
+        return True
+
+    def evaluate_final_state(self, model, env, n_eval_episodes=1, deterministic=True):
+        rewards = []
+        for _ in range(n_eval_episodes):
+            state, _ = env.reset()
+            done = False
+            episode_rewards = 0.0
+
+            while not done:
+                action, _ = model.predict(state, deterministic=deterministic)
+                state, reward, done, _, _ = env.step(action)
+                episode_rewards += reward
+
+            rewards.append(episode_rewards)
+            # env.render()
+            graph = Graph(state[:number_of_edges])
+            print(f"graph found at step {self.n_calls}:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
+
+        mean_reward = np.mean(rewards)
+        std_reward = np.std(rewards)
+
+        return mean_reward, std_reward
+
+class StarCheckCallback(BaseCallback):
+    def __init__(self, eval_env, check_freq, verbose=1):
+        super(StarCheckCallback, self).__init__(verbose)
+        self.check_freq = check_freq
+        self.eval_env = eval_env
+        self.star_found = False
+
+    def _on_step(self) -> bool:
+        if self.n_calls % self.check_freq == 0:
+            # Use the model to interact with the evaluation environment
+            state, _ = self.eval_env.reset()
+            done = False
+            while not done:
+                action, _ = self.model.predict(state, deterministic=True)
+                state, reward, done, _, _ = self.eval_env.step(action)
+
+            # Check if the resulting graph is a star
+            graph_part = state[:len(state) // 2]
+            G = Graph(graph_part).graph
+            degree_sequence = [d for n, d in G.degree()]
+            is_star = degree_sequence.count(1) == len(degree_sequence) - 1 and degree_sequence.count(len(degree_sequence) - 1) == 1
+
+            if is_star:
+                print(f"Star found! at training step {self.n_calls}")
+                self.star_found = True
+                return False
+
+        return True
+
+#####Prova DQN
+
+number_of_nodes = 7
+number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
+register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True) # this register 'LinEnvMau-v0', to change this name we need to change it also in rl_zoo3/hyperparams/ppo.yml
+env = gym.make('LinEnvMau-v0')
+
+total_timesteps = 1000000
+
+# Create the callback
+check_freq = 10000
+eval_env = LinEnvMau(number_of_nodes, normalize_reward=False)
+# callback = EvalCallback(eval_env, eval_freq=10000, verbose=1)
+callback = StarCheckCallback(eval_env, check_freq=check_freq, verbose=1)
+
+
+# Create the DQN agent
+model = DQN('MlpPolicy', env, verbose=1)
+
+# Train the agent
+#model.learn(total_timesteps=50000, callback=callback)
+model.learn(total_timesteps=total_timesteps, callback=callback)
+
+# Test the trained agent
+state, _ = env.reset()
+for step in range(number_of_edges):
+    action, _ = model.predict(state, deterministic=True)
+    # print(f"Step {step}")
+    # print("Action: ", action)
+    state, reward, done, _, info = env.step(action)
+    # print("state=", state, "reward=", reward, "done=", done, "info", info)
+    #env.render()
+    if done:
+        # Note that the VecEnv resets automatically
+        # when a done signal is encountered
+        # print("Goal reached!", "reward=", reward)
+        # env.render()
+        graph = Graph(state[:number_of_edges])
+        print(f"\ngraph found by DQN after {total_timesteps} steps:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
+        break
+
+exit(0)
+
+
 ################## prova PPO mau
 
 # # Check wagner1() for totally disconnected graphs
@@ -190,9 +283,7 @@ class RewardNormalizer(gym.Wrapper):
 
 number_of_nodes = 5
 number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
-# register_linenv(number_of_nodes)
-# id = register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True)
-register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True) # this register 'LinEnvMau-v0', we cannot change it because it is hard-coded in rl_zoo3/hyperparams/ppo.yml
+register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True) # this register 'LinEnvMau-v0', to change this name we need to change it also in rl_zoo3/hyperparams/ppo.yml
 
 # # Load the best hyperparameters
 # with open('best_params_after_7900_trials.json', 'r') as f:
@@ -328,7 +419,10 @@ print(env.normalize_reward)
 # # Print the best hyperparameters
 # print(f"\n\nAt the end of {n_trials} trials, the best parameters are:\n\n{best_params}. They have been saved in file best_params.json in local folder.")
 
-sys.argv = ["python", "--algo", "ppo", "--env", 'LinEnvMau-v0', "-n", "1000", "--optimize", "--n-trials", "50000", "--n-jobs", "56", "--sampler", "tpe", "--pruner", "median", "--progress"]
+# sys.argv = ["python", "--algo", "ppo", "--env", 'LinEnvMau-v0', "-n", "1000", "--optimize", "--n-trials", "50000", "--n-jobs", "56", "--sampler", "tpe", "--pruner", "median", "--progress"]
+
+
+sys.argv = ["python", "--algo", "ppo", "--env", 'MiniGrid-DoorKey-5x5-v0', "--optimize", "--n-trials", "1000", "--n-jobs", "1", "--sampler", "tpe", "--pruner", "median", "--progress"]
 
 train()
 
