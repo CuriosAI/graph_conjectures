@@ -183,11 +183,41 @@ class EvalCallback(BaseCallback):
 
         return mean_reward, std_reward
 
+# class StarCheckCallback(BaseCallback):
+#     def __init__(self, eval_env, check_freq, verbose=1):
+#         super(StarCheckCallback, self).__init__(verbose)
+#         self.check_freq = check_freq
+#         self.eval_env = eval_env
+#         self.star_found = False
+
+#     def _on_step(self) -> bool:
+#         if self.n_calls % self.check_freq == 0:
+#             # Use the model to interact with the evaluation environment
+#             state, _ = self.eval_env.reset()
+#             done = False
+#             while not done:
+#                 action, _ = self.model.predict(state, deterministic=True)
+#                 state, reward, done, _, _ = self.eval_env.step(action)
+
+#             # Check if the resulting graph is a star
+#             graph_part = state[:len(state) // 2]
+#             G = Graph(graph_part).graph
+#             degree_sequence = [d for n, d in G.degree()]
+#             is_star = degree_sequence.count(1) == len(degree_sequence) - 1 and degree_sequence.count(len(degree_sequence) - 1) == 1
+
+#             if is_star:
+#                 print(f"Star found! at training step {self.n_calls}")
+#                 self.star_found = True
+#                 return False
+
+#         return True
+
 class StarCheckCallback(BaseCallback):
-    def __init__(self, eval_env, check_freq, verbose=1):
+    def __init__(self, eval_env, check_freq, log_file, verbose=1):
         super(StarCheckCallback, self).__init__(verbose)
         self.check_freq = check_freq
         self.eval_env = eval_env
+        self.log_file = log_file
         self.star_found = False
 
     def _on_step(self) -> bool:
@@ -197,7 +227,7 @@ class StarCheckCallback(BaseCallback):
             done = False
             while not done:
                 action, _ = self.model.predict(state, deterministic=True)
-                state, reward, done, _, _ = self.eval_env.step(action)
+                state, _, done, _, _ = self.eval_env.step(action)
 
             # Check if the resulting graph is a star
             graph_part = state[:len(state) // 2]
@@ -206,27 +236,33 @@ class StarCheckCallback(BaseCallback):
             is_star = degree_sequence.count(1) == len(degree_sequence) - 1 and degree_sequence.count(len(degree_sequence) - 1) == 1
 
             if is_star:
-                print(f"Star found! at training step {self.n_calls}")
+                with open(self.log_file, 'a') as f:
+                    f.write(f"Star found! at training step {self.n_calls}\n")
                 self.star_found = True
-                return False
+
+            if Graph(graph_part).wagner1() > 0:
+                with open(self.log_file, 'a') as f:
+                    f.write(f"Counterexample found! at training step {self.n_calls}\n")
+                with open(f'counterexample_{self.n_calls}.pkl', 'wb') as f:
+                    pickle.dump(G, f)
 
         return True
 
+
 #####Prova DQN
 
-number_of_nodes = 7
+number_of_nodes = 18
 number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
 register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True) # this register 'LinEnvMau-v0', to change this name we need to change it also in rl_zoo3/hyperparams/ppo.yml
 env = gym.make('LinEnvMau-v0')
 
-total_timesteps = 1000000
+total_timesteps = 42000000
 
 # Create the callback
 check_freq = 10000
 eval_env = LinEnvMau(number_of_nodes, normalize_reward=False)
 # callback = EvalCallback(eval_env, eval_freq=10000, verbose=1)
-callback = StarCheckCallback(eval_env, check_freq=check_freq, verbose=1)
-
+callback = StarCheckCallback(eval_env, check_freq=check_freq, log_file='log.txt', verbose=1)
 
 # Create the DQN agent
 model = DQN('MlpPolicy', env, verbose=1)
