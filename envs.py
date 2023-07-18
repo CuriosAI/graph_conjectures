@@ -70,6 +70,7 @@ class LinEnvMau(gym.Env):
       # info['terminal_state'] = copy.deepcopy(self.state) # not needed, because make_vec_env already does this
     else:
     # print(f"reward term = {Graph(graph).wagner1()}")
+      # We normalize dividing by number_of_nodes, because empirically we see that min(wagner1())~-number_of_nodes. It should be proved.
       reward = Graph(graph).wagner1()/self.number_of_nodes if self.normalize_reward else Graph(graph).wagner1()
       # make_vec_env resets automatically when a done signal is encountered
       # we use info to pass the terminal state

@@ -231,7 +231,8 @@ class StarCheckCallback(BaseCallback):
 
             # Check if the resulting graph is a star
             graph_part = state[:len(state) // 2]
-            G = Graph(graph_part).graph
+            graph = Graph(graph_part)
+            G = graph.graph
             degree_sequence = [d for n, d in G.degree()]
             is_star = degree_sequence.count(1) == len(degree_sequence) - 1 and degree_sequence.count(len(degree_sequence) - 1) == 1
 
@@ -240,23 +241,53 @@ class StarCheckCallback(BaseCallback):
                     f.write(f"Star found! at training step {self.n_calls}\n")
                 self.star_found = True
 
-            if Graph(graph_part).wagner1() > 0:
+            if graph.wagner1() > 0 and graph.is_connected():
                 with open(self.log_file, 'a') as f:
                     f.write(f"Counterexample found! at training step {self.n_calls}\n")
                 with open(f'counterexample_{self.n_calls}.pkl', 'wb') as f:
-                    pickle.dump(G, f)
+                    pickle.dump(graph, f)
 
         return True
 
 
 #####Prova DQN
 
+
+# # Replace with the actual path to your log file
+# log_file = 'log.txt'
+
+# # Open the log file and read the lines
+# with open(log_file, 'r') as f:
+#     lines = f.readlines()
+
+# # Loop over the lines in the log file
+# for line in lines:
+#     # If the line contains 'Counterexample found', load and visualize the corresponding graph
+#     if 'Counterexample found' in line:
+#         # Extract the step number from the line
+#         step = int(line.split()[-1])
+
+#         # Construct the pickle file name from the step number
+#         pickle_file = f'counterexample_{step}.pkl'
+
+#         # Load the graph from the pickle file
+#         with open(pickle_file, 'rb') as f:
+#             G = pickle.load(f)
+#             graph = Graph(G)
+
+#         # Print the Wagner1 score
+#         print(f"Wagner1 score: {graph.wagner1()}")
+
+#         # Draw the graph
+#         graph.draw()
+#         plt.show()
+
 number_of_nodes = 18
 number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
 register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True) # this register 'LinEnvMau-v0', to change this name we need to change it also in rl_zoo3/hyperparams/ppo.yml
 env = gym.make('LinEnvMau-v0')
 
-total_timesteps = 42000000
+total_timesteps = 100000000
 
 # Create the callback
 check_freq = 10000
@@ -265,7 +296,9 @@ eval_env = LinEnvMau(number_of_nodes, normalize_reward=False)
 callback = StarCheckCallback(eval_env, check_freq=check_freq, log_file='log.txt', verbose=1)
 
 # Create the DQN agent
-model = DQN('MlpPolicy', env, verbose=1)
+model = DQN('MlpPolicy', env, verbose=1, policy_kwargs={"net_arch": [128, 64, 4]})
+
+# print(model.policy)
 
 # Train the agent
 #model.learn(total_timesteps=50000, callback=callback)
