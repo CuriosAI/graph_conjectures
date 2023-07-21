@@ -25,8 +25,8 @@ from stable_baselines3 import PPO, DQN
 # from stable_baselines3.common.results_plotter import load_results, ts2xy
 #from stable_baselines3.common.evaluation import evaluate_policy
 
-from rl_zoo3.train import train
-import optuna
+# from rl_zoo3.train import train
+# import optuna
 
 # My classes
 # To use custom envs with the algorithms from rl_zoo3, remember to add default hyperparameters into hyperparams file for that algorithm, e.g. rl_zoo3/hyperparams/ppo.yml
@@ -43,14 +43,15 @@ number_of_nodes = 4
 number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
 
 register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True) # Needed by rl_zoo3. This register 'LinEnv-v0' with normalization. To change this name we need to change it also in rl_zoo3/hyperparams/ppo.yml
-env = gym.make('LinEnv-v0')
-number_of_states = env.number_of_states # Computed as 2 ** number_of_edges - 1
+
+train_env = LinEnv(number_of_nodes, normalize_reward=True)
+# number_of_states = train_env.number_of_states # Computed as 2 ** number_of_edges - 1
 
 # Create the callback
-check_freq = number_of_edges * 1 # Check every 1 episode
-eval_env = LinEnv(number_of_nodes, normalize_reward=False) # For evaluation in the callback we don't want normalization
+# check_freq = number_of_edges * 1 # Check every 1 episode
+check_freq = 1 # Check every 1 step
+eval_env = LinEnv(number_of_nodes, normalize_reward=False) # For evaluation we don't want normalization
 check_callback = CheckCallback(eval_env, check_freq=check_freq, log_file='log.txt', verbose=1)
-# exploration_callback = CustomExplorationScheduleCallback(initial_p=1.0, final_p=0.05, schedule_duration=5000*number_of_edges)
 
 # LinEnv is a fixed-horizon MDP. Every episode is number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2 steps long. If we want to make "similar" experiments with different number_of_nodes, it makes sense to fix the number_of_episodes instead of steps, and setting total_timesteps = number_of_edges * number_of_episodes
 
@@ -60,27 +61,28 @@ check_callback = CheckCallback(eval_env, check_freq=check_freq, log_file='log.tx
 # policy_total_params = sum(p.numel() for p in model.policy.parameters())
 # print(f"Total number of parameters in the policy network: {policy_total_params}")
 
-exploration_episodes = 6300
+# Here we set exploration for DQN to a fixed number of episodes, by setting the exploration fraction of the total timesteps of training. total_timesteps is a very high value, the idea is that training is going on until the counterexample is found. We are using RL as an exploration algorithm, we are not interested in the final policy
+exploration_episodes = 5000 # To be tuned
 exploration_timesteps = number_of_edges * exploration_episodes
 total_timesteps = 10E9
-exploration_final_eps = 1
 exploration_fraction = exploration_timesteps / total_timesteps # Set exploration to a fixed exploration_episodes number  
+
+exploration_final_eps = 0.05 # To be tuned
+learning_rate = 1E-5 # To be tuned
 
 # number_of_episodes = policy_total_params * 2
 
 # total_timesteps = number_of_edges * number_of_episodes # The constant after // in number_of_episodes is chosen so that when number_of_nodes = 4, total_timesteps ~ X, where X is the number of timesteps needed to find the star at least on 5 consecutive trials when number_of_nodes = 4
 
-print(f"total_timesteps = {total_timesteps}")
+# print(f"total_timesteps = {total_timesteps}")
 
-# Create the DQN agent. "net_arch": [128, 64, 4] is Wagner choice.
-model = DQN('MlpPolicy', env, verbose=1, exploration_fraction=exploration_fraction, exploration_final_eps=exploration_final_eps, learning_rate=1e-5, policy_kwargs={"net_arch": [128, 64, 4]}, tensorboard_log="./tensorboard_logs/")
+# Create the DQN agent. "net_arch": [128, 64, 4] is Wagner choice. To be tuned
+model = DQN('MlpPolicy', train_env, verbose=1, exploration_fraction=exploration_fraction, exploration_final_eps=exploration_final_eps, learning_rate=learning_rate, policy_kwargs={"net_arch": [128, 64, 4]}, tensorboard_log="./tensorboard_logs/")
 
-# Train the agent
-#model.learn(total_timesteps=50000, callback=callback)
-# model.learn(total_timesteps=total_timesteps, callback=[check_callback, exploration_callback])
+# Train the agent until a star or a counterexample is found
 model.learn(total_timesteps=total_timesteps, callback=check_callback)
 
-load_results("log.txt")
+# load_results("log.txt")
 
 exit(0)
 
