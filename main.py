@@ -5,7 +5,6 @@ import math
 import itertools as it
 import random
 import scipy.sparse as sp
-import pickle
 
 import json
 import pathlib
@@ -15,26 +14,141 @@ from collections import defaultdict
 import sys
 import json
 import os
+import pickle
 
 import gymnasium as gym
 from gymnasium import spaces
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3 import PPO, DQN
-from stable_baselines3.common.callbacks import BaseCallback
-# from stable_baselines3.common.results_plotter import load_results, ts2xy
 
+# from stable_baselines3.common.results_plotter import load_results, ts2xy
 #from stable_baselines3.common.evaluation import evaluate_policy
 
 from rl_zoo3.train import train
 import optuna
 
-# my classes
-# from feats_miner import feats_miner
-from envs import LinEnvMau, register_linenv#, LocEnv, GlobEnv
+# My classes
+# To use custom envs with the algorithms from rl_zoo3, remember to add default hyperparameters into hyperparams file for that algorithm, e.g. rl_zoo3/hyperparams/ppo.yml
+
+from envs import LinEnv, register_linenv#, LocEnv, GlobEnv
 from graph import Graph
-from optuna_objective import objective_sb3, save_best_params_wrapper
-from tabular_mc import mc_control_epsilon_greedy, make_epsilon_greedy_policy
+# from optuna_objective import objective_sb3, save_best_params_wrapper
+# from tabular_mc import mc_control_epsilon_greedy, make_epsilon_greedy_policy
+from save_and_load import CheckCallback, load_results, CustomExplorationScheduleCallback
+
+##### The code starts here. This is a DQN attempt.
+
+number_of_nodes = 4
+number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
+
+register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True) # Needed by rl_zoo3. This register 'LinEnv-v0' with normalization. To change this name we need to change it also in rl_zoo3/hyperparams/ppo.yml
+env = gym.make('LinEnv-v0')
+number_of_states = env.number_of_states # Computed as 2 ** number_of_edges - 1
+
+# Create the callback
+check_freq = number_of_edges * 1 # Check every 1 episode
+eval_env = LinEnv(number_of_nodes, normalize_reward=False) # For evaluation in the callback we don't want normalization
+check_callback = CheckCallback(eval_env, check_freq=check_freq, log_file='log.txt', verbose=1)
+# exploration_callback = CustomExplorationScheduleCallback(initial_p=1.0, final_p=0.05, schedule_duration=5000*number_of_edges)
+
+# LinEnv is a fixed-horizon MDP. Every episode is number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2 steps long. If we want to make "similar" experiments with different number_of_nodes, it makes sense to fix the number_of_episodes instead of steps, and setting total_timesteps = number_of_edges * number_of_episodes
+
+# number_of_episodes = 3E3 * number_of_states # For every episode we compute wagner1() of its terminal state, thus it would make sense to make episodes grow as number_of_states, but this means that total_timesteps grows as n ** 2 * 2 ** (n ** 2)!!!!
+
+# Another option is making episodes grow as net_arch size. Bigger the network, more episodes needed to train. Does it make sense?
+# policy_total_params = sum(p.numel() for p in model.policy.parameters())
+# print(f"Total number of parameters in the policy network: {policy_total_params}")
+
+exploration_episodes = 6300
+exploration_timesteps = number_of_edges * exploration_episodes
+total_timesteps = 10E9
+exploration_final_eps = 1
+exploration_fraction = exploration_timesteps / total_timesteps # Set exploration to a fixed exploration_episodes number  
+
+# number_of_episodes = policy_total_params * 2
+
+# total_timesteps = number_of_edges * number_of_episodes # The constant after // in number_of_episodes is chosen so that when number_of_nodes = 4, total_timesteps ~ X, where X is the number of timesteps needed to find the star at least on 5 consecutive trials when number_of_nodes = 4
+
+print(f"total_timesteps = {total_timesteps}")
+
+# Create the DQN agent. "net_arch": [128, 64, 4] is Wagner choice.
+model = DQN('MlpPolicy', env, verbose=1, exploration_fraction=exploration_fraction, exploration_final_eps=exploration_final_eps, learning_rate=1e-5, policy_kwargs={"net_arch": [128, 64, 4]}, tensorboard_log="./tensorboard_logs/")
+
+# Train the agent
+#model.learn(total_timesteps=50000, callback=callback)
+# model.learn(total_timesteps=total_timesteps, callback=[check_callback, exploration_callback])
+model.learn(total_timesteps=total_timesteps, callback=check_callback)
+
+load_results("log.txt")
+
+exit(0)
+
+
+# # Test the trained agent
+# state, _ = env.reset()
+# for step in range(number_of_edges):
+#     action, _ = model.predict(state, deterministic=True)
+#     # print(f"Step {step}")
+#     # print("Action: ", action)
+#     state, reward, done, _, info = env.step(action)
+#     # print("state=", state, "reward=", reward, "done=", done, "info", info)
+#     #env.render()
+#     if done:
+#         # Note that the VecEnv resets automatically
+#         # when a done signal is encountered
+#         # print("Goal reached!", "reward=", reward)
+#         # env.render()
+#         graph = Graph(state[:number_of_edges])
+#         print(f"\ngraph found by DQN after {total_timesteps} steps:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
+#         break
+
+
+
+# # Define the edges of the graph
+# edges = [
+#     (0, 6),
+#     (0, 16),
+#     (0, 17),
+#     (1, 5),
+#     (1, 8),
+#     (1, 9),
+#     (1, 13),
+#     (1, 17),
+#     (2, 4),
+#     (2, 10),
+#     (2, 15),
+#     (2, 16),
+#     (3, 4),
+#     (3, 6),
+#     (3, 7),
+#     (3, 8),
+#     (3, 9),
+#     (3, 10),
+#     (3, 11),
+#     (3, 12),
+#     (3, 14),
+# ]
+
+# # Create a new graph
+# G = nx.Graph()
+
+# # Add edges to the graph
+# G.add_edges_from(edges)
+
+# graph = Graph(G)
+
+# print(graph.wagner1())
+# graph.draw()
+
+# plt.show()
+# # Now G is a networkx graph representing the adjacency list
+# exit(0)
+
+
+
+
+
 
 class QDictionary:
     def __init__(self):
@@ -183,104 +297,9 @@ class EvalCallback(BaseCallback):
 
         return mean_reward, std_reward
 
-# class StarCheckCallback(BaseCallback):
-#     def __init__(self, eval_env, check_freq, verbose=1):
-#         super(StarCheckCallback, self).__init__(verbose)
-#         self.check_freq = check_freq
-#         self.eval_env = eval_env
-#         self.star_found = False
-
-#     def _on_step(self) -> bool:
-#         if self.n_calls % self.check_freq == 0:
-#             # Use the model to interact with the evaluation environment
-#             state, _ = self.eval_env.reset()
-#             done = False
-#             while not done:
-#                 action, _ = self.model.predict(state, deterministic=True)
-#                 state, reward, done, _, _ = self.eval_env.step(action)
-
-#             # Check if the resulting graph is a star
-#             graph_part = state[:len(state) // 2]
-#             G = Graph(graph_part).graph
-#             degree_sequence = [d for n, d in G.degree()]
-#             is_star = degree_sequence.count(1) == len(degree_sequence) - 1 and degree_sequence.count(len(degree_sequence) - 1) == 1
-
-#             if is_star:
-#                 print(f"Star found! at training step {self.n_calls}")
-#                 self.star_found = True
-#                 return False
-
-#         return True
-
-class StarCheckCallback(BaseCallback):
-    def __init__(self, eval_env, check_freq, log_file, verbose=1):
-        super(StarCheckCallback, self).__init__(verbose)
-        self.check_freq = check_freq
-        self.eval_env = eval_env
-        self.log_file = log_file
-        self.star_found = False
-
-    def _on_step(self) -> bool:
-        if self.n_calls % self.check_freq == 0:
-            # Use the model to interact with the evaluation environment
-            state, _ = self.eval_env.reset()
-            done = False
-            while not done:
-                action, _ = self.model.predict(state, deterministic=True)
-                state, _, done, _, _ = self.eval_env.step(action)
-
-            # Check if the resulting graph is a star
-            graph_part = state[:len(state) // 2]
-            graph = Graph(graph_part)
-            G = graph.graph
-            degree_sequence = [d for n, d in G.degree()]
-            is_star = degree_sequence.count(1) == len(degree_sequence) - 1 and degree_sequence.count(len(degree_sequence) - 1) == 1
-
-            if is_star:
-                with open(self.log_file, 'a') as f:
-                    f.write(f"Star found! at training step {self.n_calls}\n")
-                self.star_found = True
-
-            if graph.wagner1() > 0 and graph.is_connected():
-                with open(self.log_file, 'a') as f:
-                    f.write(f"Counterexample found! at training step {self.n_calls}\n")
-                with open(f'counterexample_{self.n_calls}.pkl', 'wb') as f:
-                    pickle.dump(graph, f)
-
-        return True
-
 
 #####Prova DQN
 
-
-# # Replace with the actual path to your log file
-# log_file = 'log.txt'
-
-# # Open the log file and read the lines
-# with open(log_file, 'r') as f:
-#     lines = f.readlines()
-
-# # Loop over the lines in the log file
-# for line in lines:
-#     # If the line contains 'Counterexample found', load and visualize the corresponding graph
-#     if 'Counterexample found' in line:
-#         # Extract the step number from the line
-#         step = int(line.split()[-1])
-
-#         # Construct the pickle file name from the step number
-#         pickle_file = f'counterexample_{step}.pkl'
-
-#         # Load the graph from the pickle file
-#         with open(pickle_file, 'rb') as f:
-#             G = pickle.load(f)
-#             graph = Graph(G)
-
-#         # Print the Wagner1 score
-#         print(f"Wagner1 score: {graph.wagner1()}")
-
-#         # Draw the graph
-#         graph.draw()
-#         plt.show()
 
 number_of_nodes = 18
 number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
