@@ -1,6 +1,7 @@
 from stable_baselines3.common.callbacks import BaseCallback
-from graph import Graph
 import pickle
+import os
+from graph import Graph
 
 class CheckCallback(BaseCallback):
     """Every check_freq steps, evaluate one episode with the greedy policy and log when a star or a counterexample is found."""
@@ -42,24 +43,6 @@ class CheckCallback(BaseCallback):
 
         return True
 
-class CustomExplorationScheduleCallback(BaseCallback):
-    def __init__(self, initial_p, final_p, schedule_duration):
-        super(CustomExplorationScheduleCallback, self).__init__()
-        self.initial_p = initial_p
-        self.final_p = final_p
-        self.schedule_duration = schedule_duration
-
-    def _on_step(self):
-        fraction_done = min(self.num_timesteps / self.schedule_duration, 1)
-        current_p = self.initial_p * (1 - fraction_done) + self.final_p * fraction_done
-        self.model.exploration_rate = current_p
-
-        # Print the current exploration rate
-        if self.num_timesteps % 1000 == 0:  # adjust the interval as needed
-            print(f"Step: {self.num_timesteps}, Exploration rate: {self.model.exploration_rate}")
-
-        return True
-
 def load_results(log_file="log.txt"):
     """
     Load and visualize the graphs from the counterexample files referenced in the log file.
@@ -67,9 +50,6 @@ def load_results(log_file="log.txt"):
     Parameters:
     log_file (str): Path to the log file.
     """
-    import os
-    import matplotlib.pyplot as plt
-    import pickle
 
     # Check if the log file exists
     if not os.path.exists(log_file):

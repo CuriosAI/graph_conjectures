@@ -64,10 +64,10 @@ check_callback = CheckCallback(eval_env, check_freq=check_freq, log_file='log.tx
 # Here we set exploration for DQN to a fixed number of episodes, by setting the exploration fraction of the total timesteps of training. total_timesteps is a very high value, the idea is that training is going on until the counterexample is found. We are using RL as an exploration algorithm, we are not interested in the final policy
 exploration_episodes = 5000 # To be tuned
 exploration_timesteps = number_of_edges * exploration_episodes
-total_timesteps = 10E9
+total_timesteps = 10E9 # A large number that will never finish
 exploration_fraction = exploration_timesteps / total_timesteps # Set exploration to a fixed exploration_episodes number  
 
-exploration_final_eps = 1 # To be tuned
+exploration_final_eps = 0.05 # To be tuned
 learning_rate = 1E-5 # To be tuned
 
 # number_of_episodes = policy_total_params * 2
@@ -77,7 +77,7 @@ learning_rate = 1E-5 # To be tuned
 # print(f"total_timesteps = {total_timesteps}")
 
 # Create the DQN agent. net_arch = [128, 64, 4] is Wagner choice. To be tuned
-net_arch = [6, 5, 4]
+net_arch = [128, 64, 4]
 model = DQN('MlpPolicy', train_env, verbose=1, exploration_fraction=exploration_fraction, exploration_final_eps=exploration_final_eps, learning_rate=learning_rate, policy_kwargs={"net_arch": net_arch}, tensorboard_log="./tensorboard_logs/")
 
 # Train the agent until a star or a counterexample is found
