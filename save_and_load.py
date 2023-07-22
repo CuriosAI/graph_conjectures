@@ -76,8 +76,12 @@ class CheckOnTrainEnvCallback(BaseCallback):
                 if self.star_check:
                     if graph.is_star():
                         elapsed_time = datetime.datetime.now() - self.start_time  # Compute the elapsed time
+                        total_seconds = int(elapsed_time.total_seconds())
+                        hours, remainder = divmod(total_seconds, 3600)
+                        minutes, seconds = divmod(remainder, 60)
                         with open(self.log_file, 'a') as f:
-                            f.write(f"{elapsed_time.total_seconds()} seconds - Star found at env.step() call # {self.n_calls}\n")
+                            f.write(f"{hours}h {minutes}m {seconds}s - Star found at env.step() call # {self.n_calls}\n")
+                            # f.write(f"{elapsed_time.total_seconds()} seconds - Star found at env.step() call # {self.n_calls}\n")
                             # f.write(f"Star found at env.step() call # {self.n_calls}\n")
                         with open(f'star_{self.number_of_nodes}_{self.n_calls}.pkl', 'wb') as f:
                             pickle.dump(graph, f)
@@ -87,8 +91,11 @@ class CheckOnTrainEnvCallback(BaseCallback):
                 # Check if the current state is a (connected) counterexample and save it
                 if graph.wagner1() > 0:
                     elapsed_time = datetime.datetime.now() - self.start_time  # Compute the elapsed time
+                    total_seconds = int(elapsed_time.total_seconds())
+                    hours, remainder = divmod(total_seconds, 3600)
+                    minutes, seconds = divmod(remainder, 60)
                     with open(self.log_file, 'a') as f:
-                        f.write(f"{elapsed_time.total_seconds()} seconds - Counterexample found at training step {self.n_calls}\n")
+                        f.write(f"{hours}h {minutes}m {seconds}s - Counterexample found at training step {self.n_calls}\n")
                         # f.write(f"Counterexample found at training step {self.n_calls}\n")
                     with open(f'counterexample_{self.number_of_nodes}_{self.n_calls}.pkl', 'wb') as f:
                         pickle.dump(graph, f)
