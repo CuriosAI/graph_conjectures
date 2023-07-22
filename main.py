@@ -67,7 +67,7 @@ exploration_timesteps = number_of_edges * exploration_episodes
 total_timesteps = 10E9
 exploration_fraction = exploration_timesteps / total_timesteps # Set exploration to a fixed exploration_episodes number  
 
-exploration_final_eps = 0.05 # To be tuned
+exploration_final_eps = 1 # To be tuned
 learning_rate = 1E-5 # To be tuned
 
 # number_of_episodes = policy_total_params * 2
@@ -76,8 +76,9 @@ learning_rate = 1E-5 # To be tuned
 
 # print(f"total_timesteps = {total_timesteps}")
 
-# Create the DQN agent. "net_arch": [128, 64, 4] is Wagner choice. To be tuned
-model = DQN('MlpPolicy', train_env, verbose=1, exploration_fraction=exploration_fraction, exploration_final_eps=exploration_final_eps, learning_rate=learning_rate, policy_kwargs={"net_arch": [128, 64, 4]}, tensorboard_log="./tensorboard_logs/")
+# Create the DQN agent. net_arch = [128, 64, 4] is Wagner choice. To be tuned
+net_arch = [6, 5, 4]
+model = DQN('MlpPolicy', train_env, verbose=1, exploration_fraction=exploration_fraction, exploration_final_eps=exploration_final_eps, learning_rate=learning_rate, policy_kwargs={"net_arch": net_arch}, tensorboard_log="./tensorboard_logs/")
 
 # Train the agent until a star or a counterexample is found
 model.learn(total_timesteps=total_timesteps, callback=check_callback)
