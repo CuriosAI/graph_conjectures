@@ -39,7 +39,7 @@ from save_and_load import CheckCallback, CheckOnTrainEnvCallback, load_results
 
 ##### The code starts here. This is a DQN attempt.
 
-number_of_nodes = 14
+number_of_nodes = 18
 number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
 
 register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True) # Needed by rl_zoo3. This register 'LinEnv-v0' with normalization. To change this name we need to change it also in rl_zoo3/hyperparams/ppo.yml
@@ -57,7 +57,8 @@ check_freq = 1 # Check frequency for the callback: check every 1 call to the env
 # check_callback = CheckCallback(eval_env, check_freq=check_freq, log_file='log.txt', verbose=1)
 
 # Since we are interested in a single graph, and not in the whole policy producing that graph, it makes sense to check the graphs explored in train_env
-check_callback = CheckOnTrainEnvCallback(check_freq=check_freq, log_file='log.txt', verbose=1)
+# Be careful that stop_on_star=False will produce a non-stopping training, and if star_check=True the disk will be probably filled with pickle files of the star. It can be useful to check if training is working, because the star should be found by the greedy policy by a close-to-optimal policy
+check_callback = CheckOnTrainEnvCallback(check_freq=check_freq, log_file='log.txt', star_check=True, stop_on_star=False, stop_on_counterexample=False, verbose=1)
 
 # LinEnv is a fixed-horizon MDP. Every episode is number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2 steps long. If we want to make "similar" experiments with different number_of_nodes, it makes sense to fix the number_of_episodes instead of steps, and setting total_timesteps = number_of_edges * number_of_episodes
 

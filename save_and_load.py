@@ -44,11 +44,14 @@ class CheckCallback(BaseCallback):
         return True
 
 class CheckOnTrainEnvCallback(BaseCallback):
-    """Every check_freq calls to the training env, check the current state and log when a star or a counterexample is found."""
-    def __init__(self, check_freq, log_file="log.txt", verbose=1):
+    """Every check_freq calls to the training env, check the current state and log when a star (if star_check == True) or a counterexample is found."""
+    def __init__(self, check_freq, log_file="log.txt", star_check=True, stop_on_star=True, stop_on_counterexample=True, verbose=1):
         super(CheckOnTrainEnvCallback, self).__init__(verbose)
         self.check_freq = check_freq
         self.log_file = log_file
+        self.star_check = star_check
+        self.stop_on_star = stop_on_star
+        self.stop_on_counterexample = stop_on_counterexample
         # self.star_found = False
     
     def _on_training_start(self):
@@ -63,26 +66,28 @@ class CheckOnTrainEnvCallback(BaseCallback):
             graph_part = state[:len(state) // 2]
             graph = Graph(graph_part)
             G = graph.graph
-            # Compute star condition: one central node of degree number_of_nodes - 1, every oter node of degree 1
-            degree_sequence = [d for n, d in G.degree()]
-            is_star = degree_sequence.count(1) == len(degree_sequence) - 1 and degree_sequence.count(len(degree_sequence) - 1) == 1
 
-            # Check if the current state is a star, use this to check if training is working, because the star has wagner1() == 0. return False to stop training when the star is found, if we are looking for counterexamples then return True
-            if is_star:
-                with open(self.log_file, 'a') as f:
-                    f.write(f"Star found at env.step() call # {self.n_calls}\n")
-                with open(f'star_{self.n_calls}.pkl', 'wb') as f:
-                    pickle.dump(graph, f)
-                # self.star_found = True
-                return False
+            # Check if the current state is a star, use this to check if training is working, because the star has wagner1() == 0
+            if self.star_check:
+                # Compute star condition: one central node of degree number_of_nodes - 1, every oter node of degree 1
+                degree_sequence = [d for n, d in G.degree()]
+                is_star = degree_sequence.count(1) == len(degree_sequence) - 1 and degree_sequence.count(len(degree_sequence) - 1) == 1
 
-            # Check if the current state is a (connected) counterexample, save it and exit training
+                if is_star:
+                    with open(self.log_file, 'a') as f:
+                        f.write(f"Star found at env.step() call # {self.n_calls}\n")
+                    with open(f'star_{self.n_calls}.pkl', 'wb') as f:
+                        pickle.dump(graph, f)
+                    # self.star_found = True
+                    return not self.stop_on_star
+
+            # Check if the current state is a (connected) counterexample and save it
             if graph.wagner1() > 0 and graph.is_connected():
                 with open(self.log_file, 'a') as f:
                     f.write(f"Counterexample found! at training step {self.n_calls}\n")
                 with open(f'counterexample_{self.n_calls}.pkl', 'wb') as f:
                     pickle.dump(graph, f)
-                return False
+                return not self.stop_on_counterexample
 
         return True
 
