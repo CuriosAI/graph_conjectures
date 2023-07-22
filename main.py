@@ -22,8 +22,9 @@ from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3 import PPO, DQN
 
+from tensorboard.compat import tf
+
 # from stable_baselines3.common.results_plotter import load_results, ts2xy
-#from stable_baselines3.common.evaluation import evaluate_policy
 
 # from rl_zoo3.train import train
 # import optuna
@@ -39,7 +40,7 @@ from save_and_load import CheckCallback, CheckOnTrainEnvCallback, load_results
 
 ##### The code starts here. This is a DQN attempt.
 
-number_of_nodes = 18
+number_of_nodes = 19
 number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
 
 register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True) # Needed by rl_zoo3. This register 'LinEnv-v0' with normalization. To change this name we need to change it also in rl_zoo3/hyperparams/ppo.yml
@@ -69,7 +70,7 @@ check_callback = CheckOnTrainEnvCallback(check_freq=check_freq, log_file='log.tx
 # print(f"Total number of parameters in the policy network: {policy_total_params}")
 
 # Here we set exploration for DQN to a fixed number of episodes, by setting the exploration fraction of the total timesteps of training. total_timesteps is a very high value, the idea is that training is going on until the counterexample is found. We are using RL as an exploration algorithm, we are not interested in the final policy
-exploration_episodes = 5000 # To be tuned
+exploration_episodes = 10000 # To be tuned
 exploration_timesteps = number_of_edges * exploration_episodes
 total_timesteps = 10E9 # A large number that will never finish
 exploration_fraction = exploration_timesteps / total_timesteps # Set exploration to a fixed exploration_episodes number  
