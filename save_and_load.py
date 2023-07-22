@@ -43,6 +43,49 @@ class CheckCallback(BaseCallback):
 
         return True
 
+class CheckOnTrainEnvCallback(BaseCallback):
+    """Every check_freq calls to the training env, check the current state and log when a star or a counterexample is found."""
+    def __init__(self, check_freq, log_file="log.txt", verbose=1):
+        super(CheckOnTrainEnvCallback, self).__init__(verbose)
+        self.check_freq = check_freq
+        self.log_file = log_file
+        # self.star_found = False
+    
+    def _on_training_start(self):
+        self.number_of_nodes = self.training_env.get_attr('number_of_nodes')[0]
+        self.number_of_edges = self.training_env.get_attr('number_of_edges')[0]
+
+    def _on_step(self) -> bool:
+        # Check only if at least number_of_nodes edges have been considered, because otherwise the current graph cannot be connected
+        if self.n_calls % self.check_freq == 0 and self.n_calls % self.number_of_edges >= self.number_of_nodes:
+            # Get the current state from the training environment
+            state = self.training_env.get_attr('state')[0]
+            graph_part = state[:len(state) // 2]
+            graph = Graph(graph_part)
+            G = graph.graph
+            # Compute star condition: one central node of degree number_of_nodes - 1, every oter node of degree 1
+            degree_sequence = [d for n, d in G.degree()]
+            is_star = degree_sequence.count(1) == len(degree_sequence) - 1 and degree_sequence.count(len(degree_sequence) - 1) == 1
+
+            # Check if the current state is a star, use this to check if training is working, because the star has wagner1() == 0. return False to stop training when the star is found, if we are looking for counterexamples then return True
+            if is_star:
+                with open(self.log_file, 'a') as f:
+                    f.write(f"Star found at env.step() call # {self.n_calls}\n")
+                with open(f'star_{self.n_calls}.pkl', 'wb') as f:
+                    pickle.dump(graph, f)
+                # self.star_found = True
+                return False
+
+            # Check if the current state is a (connected) counterexample, save it and exit training
+            if graph.wagner1() > 0 and graph.is_connected():
+                with open(self.log_file, 'a') as f:
+                    f.write(f"Counterexample found! at training step {self.n_calls}\n")
+                with open(f'counterexample_{self.n_calls}.pkl', 'wb') as f:
+                    pickle.dump(graph, f)
+                return False
+
+        return True
+
 def load_results(log_file="log.txt"):
     """
     Load and visualize the graphs from the counterexample files referenced in the log file.

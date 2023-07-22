@@ -35,23 +35,29 @@ from envs import LinEnv, register_linenv#, LocEnv, GlobEnv
 from graph import Graph
 # from optuna_objective import objective_sb3, save_best_params_wrapper
 # from tabular_mc import mc_control_epsilon_greedy, make_epsilon_greedy_policy
-from save_and_load import CheckCallback, load_results, CustomExplorationScheduleCallback
+from save_and_load import CheckCallback, CheckOnTrainEnvCallback, load_results
 
 ##### The code starts here. This is a DQN attempt.
 
-number_of_nodes = 4
+number_of_nodes = 14
 number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
 
 register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True) # Needed by rl_zoo3. This register 'LinEnv-v0' with normalization. To change this name we need to change it also in rl_zoo3/hyperparams/ppo.yml
 
 train_env = LinEnv(number_of_nodes, normalize_reward=True)
+episode_length = number_of_edges # LinEnv has a fixed horizon: every episode lasts exactly number_of_edges steps
+
 # number_of_states = train_env.number_of_states # Computed as 2 ** number_of_edges - 1
 
-# Create the callback
-# check_freq = number_of_edges * 1 # Check every 1 episode
-check_freq = 1 # Check every 1 step
-eval_env = LinEnv(number_of_nodes, normalize_reward=False) # For evaluation we don't want normalization
-check_callback = CheckCallback(eval_env, check_freq=check_freq, log_file='log.txt', verbose=1)
+check_freq = 1 # Check frequency for the callback: check every 1 call to the env
+# check_freq = episode_length * 1 # Check every 1 episode
+
+# If we want to check the output of the policy, we need a separate env because we do not want to interfere with train_env by performing episodes 
+# eval_env = LinEnv(number_of_nodes, normalize_reward=False) # For evaluation we don't want normalization
+# check_callback = CheckCallback(eval_env, check_freq=check_freq, log_file='log.txt', verbose=1)
+
+# Since we are interested in a single graph, and not in the whole policy producing that graph, it makes sense to check the graphs explored in train_env
+check_callback = CheckOnTrainEnvCallback(check_freq=check_freq, log_file='log.txt', verbose=1)
 
 # LinEnv is a fixed-horizon MDP. Every episode is number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2 steps long. If we want to make "similar" experiments with different number_of_nodes, it makes sense to fix the number_of_episodes instead of steps, and setting total_timesteps = number_of_edges * number_of_episodes
 
