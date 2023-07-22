@@ -60,6 +60,12 @@ class Graph:
     def is_connected(self):
         return nx.is_connected(self.graph)
 
+    def is_star(self):
+        # Compute star condition: one central node of degree number_of_nodes - 1, every other node of degree 1
+        degree_sequence = [d for n, d in self.graph.degree()]
+        is_star = degree_sequence.count(1) == len(degree_sequence) - 1 and degree_sequence.count(len(degree_sequence) - 1) == 1
+        return is_star
+
     def draw(self):
         # Create a figure and axes
         fig, ax = plt.subplots()

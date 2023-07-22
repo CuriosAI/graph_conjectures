@@ -21,6 +21,9 @@ from gymnasium import spaces
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3 import PPO, DQN
+from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
+from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.callbacks import BaseCallback
 
 from tensorboard.compat import tf
 
@@ -36,64 +39,76 @@ from envs import LinEnv, register_linenv#, LocEnv, GlobEnv
 from graph import Graph
 # from optuna_objective import objective_sb3, save_best_params_wrapper
 # from tabular_mc import mc_control_epsilon_greedy, make_epsilon_greedy_policy
-from save_and_load import CheckCallback, CheckOnTrainEnvCallback, load_results
+from save_and_load import CheckOnTrainEnvCallback, load_results
 
 ##### The code starts here. This is a DQN attempt.
 
-number_of_nodes = 19
-number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
+# load_results()
+# plt.show()
+# exit(0)
 
-register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True) # Needed by rl_zoo3. This register 'LinEnv-v0' with normalization. To change this name we need to change it also in rl_zoo3/hyperparams/ppo.yml
+number_of_nodes = 30 # Needed by the lambda function creating the envs, thus must be put outside the if __name__ == '__main__': to be executed in every training env created by SubprocVecEnv. Update: I wasn't able to make SubprocVecEnv work, I am now using DummyVecEnv 
 
-train_env = LinEnv(number_of_nodes, normalize_reward=True)
-episode_length = number_of_edges # LinEnv has a fixed horizon: every episode lasts exactly number_of_edges steps
+def make_linenv():
+    return LinEnv(number_of_nodes=number_of_nodes, normalize_reward=True)
 
-# number_of_states = train_env.number_of_states # Computed as 2 ** number_of_edges - 1
+if __name__ == "__main__":
 
-check_freq = 1 # Check frequency for the callback: check every 1 call to the env
-# check_freq = episode_length * 1 # Check every 1 episode
+    number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
 
-# If we want to check the output of the policy, we need a separate env because we do not want to interfere with train_env by performing episodes 
-# eval_env = LinEnv(number_of_nodes, normalize_reward=False) # For evaluation we don't want normalization
-# check_callback = CheckCallback(eval_env, check_freq=check_freq, log_file='log.txt', verbose=1)
+    # register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True) # Needed by rl_zoo3. This register 'LinEnv-v0' with normalization. To change this name we need to change it also in rl_zoo3/hyperparams/ppo.yml
 
-# Since we are interested in a single graph, and not in the whole policy producing that graph, it makes sense to check the graphs explored in train_env
-# Be careful that stop_on_star=False will produce a non-stopping training, and if star_check=True the disk will be probably filled with pickle files of the star. It can be useful to check if training is working, because the star should be found by the greedy policy by a close-to-optimal policy
-check_callback = CheckOnTrainEnvCallback(check_freq=check_freq, log_file='log.txt', star_check=True, stop_on_star=False, stop_on_counterexample=False, verbose=1)
+    # Create a list of training environments for multiprocessing
+    number_of_envs = 28 # Set this value = number of cores
+    train_env = make_vec_env(make_linenv, n_envs=number_of_envs, vec_env_cls=DummyVecEnv)
+    episode_length = number_of_edges # LinEnv has a fixed horizon: every episode lasts exactly number_of_edges steps
 
-# LinEnv is a fixed-horizon MDP. Every episode is number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2 steps long. If we want to make "similar" experiments with different number_of_nodes, it makes sense to fix the number_of_episodes instead of steps, and setting total_timesteps = number_of_edges * number_of_episodes
+    # number_of_states = train_env.number_of_states # Computed as 2 ** number_of_edges - 1
 
-# number_of_episodes = 3E3 * number_of_states # For every episode we compute wagner1() of its terminal state, thus it would make sense to make episodes grow as number_of_states, but this means that total_timesteps grows as n ** 2 * 2 ** (n ** 2)!!!!
+    check_freq = 1 # Check frequency for the callback: check every 1 call to the env
+    # check_freq = episode_length * 1 # Check every 1 episode
 
-# Another option is making episodes grow as net_arch size. Bigger the network, more episodes needed to train. Does it make sense?
-# policy_total_params = sum(p.numel() for p in model.policy.parameters())
-# print(f"Total number of parameters in the policy network: {policy_total_params}")
+    # If we want to check the output of the policy, we need a separate env because we do not want to interfere with train_env by performing episodes 
+    # eval_env = LinEnv(number_of_nodes, normalize_reward=False) # For evaluation we don't want normalization
+    # check_callback = CheckCallback(eval_env, check_freq=check_freq, log_file='log.txt', verbose=1)
 
-# Here we set exploration for DQN to a fixed number of episodes, by setting the exploration fraction of the total timesteps of training. total_timesteps is a very high value, the idea is that training is going on until the counterexample is found. We are using RL as an exploration algorithm, we are not interested in the final policy
-exploration_episodes = 10000 # To be tuned
-exploration_timesteps = number_of_edges * exploration_episodes
-total_timesteps = 10E9 # A large number that will never finish
-exploration_fraction = exploration_timesteps / total_timesteps # Set exploration to a fixed exploration_episodes number  
+    # Since we are interested in a single graph, and not in the whole policy producing that graph, it makes sense to check the graphs explored in train_env
+    # Be careful that stop_on_star=False will produce a non-stopping training, and if star_check=True the disk will be probably filled with pickle files of the star. It can be useful to check if training is working, because the star should be found by the greedy policy by a close-to-optimal policy
+    check_callback = CheckOnTrainEnvCallback(check_freq=check_freq, log_file=f'log_{number_of_nodes}.txt', star_check=True, stop_on_star=False, stop_on_counterexample=False, verbose=1)
 
-exploration_final_eps = 0.05 # To be tuned
-learning_rate = 1E-5 # To be tuned
+    # LinEnv is a fixed-horizon MDP. Every episode is number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2 steps long. If we want to make "similar" experiments with different number_of_nodes, it makes sense to fix the number_of_episodes instead of steps, and setting total_timesteps = number_of_edges * number_of_episodes
 
-# number_of_episodes = policy_total_params * 2
+    # number_of_episodes = 3E3 * number_of_states # For every episode we compute wagner1() of its terminal state, thus it would make sense to make episodes grow as number_of_states, but this means that total_timesteps grows as n ** 2 * 2 ** (n ** 2)!!!!
 
-# total_timesteps = number_of_edges * number_of_episodes # The constant after // in number_of_episodes is chosen so that when number_of_nodes = 4, total_timesteps ~ X, where X is the number of timesteps needed to find the star at least on 5 consecutive trials when number_of_nodes = 4
+    # Another option is making episodes grow as net_arch size. Bigger the network, more episodes needed to train. Does it make sense?
+    # policy_total_params = sum(p.numel() for p in model.policy.parameters())
+    # print(f"Total number of parameters in the policy network: {policy_total_params}")
 
-# print(f"total_timesteps = {total_timesteps}")
+    # Here we set exploration for DQN to a fixed number of episodes, by setting the exploration fraction of the total timesteps of training. total_timesteps is a very high value, the idea is that training is going on until the counterexample is found. We are using RL as an exploration algorithm, we are not interested in the final policy
+    exploration_episodes = 10000 # To be tuned
+    exploration_timesteps = number_of_edges * exploration_episodes
+    total_timesteps = 10E9 # A large number that will never finish
+    exploration_fraction = exploration_timesteps / total_timesteps # Set exploration to a fixed exploration_episodes number  
 
-# Create the DQN agent. net_arch = [128, 64, 4] is Wagner choice. To be tuned
-net_arch = [128, 64, 4]
-model = DQN('MlpPolicy', train_env, verbose=1, exploration_fraction=exploration_fraction, exploration_final_eps=exploration_final_eps, learning_rate=learning_rate, policy_kwargs={"net_arch": net_arch}, tensorboard_log="./tensorboard_logs/")
+    exploration_final_eps = 0.05 # To be tuned
+    learning_rate = 1E-5 # To be tuned
 
-# Train the agent until a star or a counterexample is found
-model.learn(total_timesteps=total_timesteps, callback=check_callback)
+    # number_of_episodes = policy_total_params * 2
 
-# load_results("log.txt")
+    # total_timesteps = number_of_edges * number_of_episodes # The constant after // in number_of_episodes is chosen so that when number_of_nodes = 4, total_timesteps ~ X, where X is the number of timesteps needed to find the star at least on 5 consecutive trials when number_of_nodes = 4
 
-exit(0)
+    # print(f"total_timesteps = {total_timesteps}")
+
+    # Create the DQN agent. net_arch = [128, 64, 4] is Wagner choice. To be tuned
+    net_arch = [128, 64, 4]
+    model = DQN('MlpPolicy', train_env, verbose=1, exploration_fraction=exploration_fraction, exploration_final_eps=exploration_final_eps, learning_rate=learning_rate, policy_kwargs={"net_arch": net_arch}, tensorboard_log=f"./tensorboard_logs_{number_of_nodes}/")
+
+    # Train the agent until a star or a counterexample is found
+    model.learn(total_timesteps=total_timesteps, callback=check_callback)
+
+    # load_results("log.txt")
+
+    exit(0)
 
 
 # # Test the trained agent

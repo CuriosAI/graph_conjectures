@@ -10,7 +10,7 @@ import json
 
 def objective_sb3(trial):
     # Define a Gym environment
-    env = DummyVecEnv([lambda: gym.make('LinEnvMau-v0')])  # Replace with your environment
+    env = DummyVecEnv([lambda: gym.make('LinEnv-v0')])  # Replace with your environment
 
     # Define the hyperparameters to optimize, they can be taken looking at the signature of PPO at https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html. The following values are taken from https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/rl_zoo3/hyperparams_opt.py.
     # See the detailed explanation of hyperparameters at https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/.
