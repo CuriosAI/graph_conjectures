@@ -98,7 +98,7 @@ class CheckOnTrainEnvCallback(BaseCallback):
                     hours, remainder = divmod(total_seconds, 3600)
                     minutes, seconds = divmod(remainder, 60)
                     # Create the counterexamples folder if it doesn't exist
-                    os.makedirs(log_folder, exist_ok=True)
+                    os.makedirs(self.log_folder, exist_ok=True)
                     with open(self.log_file, 'a') as f:
                         f.write(f"{hours}h {minutes}m {seconds}s - Counterexample found at training step {self.n_calls}\n")
                         # f.write(f"Counterexample found at training step {self.n_calls}\n")
