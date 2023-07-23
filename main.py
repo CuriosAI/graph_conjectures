@@ -15,6 +15,7 @@ import sys
 import json
 import os
 import pickle
+import uuid
 
 import gymnasium as gym
 from gymnasium import spaces
@@ -23,9 +24,9 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3 import PPO, DQN
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.callbacks import BaseCallback, ProgressBarCallback, EvalCallback, StopTrainingOnRewardThreshold
 
-from tensorboard.compat import tf
+#from tensorboard.compat import tf
 
 # from stable_baselines3.common.results_plotter import load_results, ts2xy
 
@@ -35,7 +36,7 @@ from tensorboard.compat import tf
 # My classes
 # To use custom envs with the algorithms from rl_zoo3, remember to add default hyperparameters into hyperparams file for that algorithm, e.g. rl_zoo3/hyperparams/ppo.yml
 
-from envs import LinEnv, register_linenv#, LocEnv, GlobEnv
+from envs import LinEnv, register_linenv
 from graph import Graph
 # from optuna_objective import objective_sb3, save_best_params_wrapper
 # from tabular_mc import mc_control_epsilon_greedy, make_epsilon_greedy_policy
@@ -49,7 +50,7 @@ from save_and_load import CheckOnTrainEnvCallback, load_results
 
 number_of_nodes = 18 # Needed by the lambda function creating the envs, thus must be put outside the if __name__ == '__main__': to be executed in every training env created by SubprocVecEnv. Update: I wasn't able to make SubprocVecEnv work, I am now using DummyVecEnv 
 
-def make_linenv():
+def make_normalized_linenv():
     return LinEnv(number_of_nodes=number_of_nodes, normalize_reward=True)
 
 # This block is needed by multiprocessing, but for the moment is not working, so we use DummyVecEnv instead
@@ -61,21 +62,9 @@ if __name__ == "__main__":
 
     # Create a list of training environments for multiprocessing
     number_of_envs = 1 # Set this value = number of cores to enable multiprocess
-    train_env = make_vec_env(make_linenv, n_envs=number_of_envs, vec_env_cls=DummyVecEnv) # Replace DummyVecEn  with SubprocVecEnv for true multiprocess
+    train_env = make_vec_env(make_normalized_linenv, n_envs=number_of_envs, vec_env_cls=DummyVecEnv) # Replace DummyVecEn  with SubprocVecEnv for true multiprocess
+
     episode_length = number_of_edges # LinEnv has a fixed horizon: every episode lasts exactly number_of_edges steps
-
-    # number_of_states = train_env.number_of_states # Computed as 2 ** number_of_edges - 1
-
-    check_freq = 1 # Check frequency for the callback: check every 1 call to the env
-    # check_freq = episode_length * 1 # Check every 1 episode
-
-    # If we want to check the output of the policy, we need a separate env because we do not want to interfere with train_env by performing episodes 
-    # eval_env = LinEnv(number_of_nodes, normalize_reward=False) # For evaluation we don't want normalization
-    # check_callback = CheckCallback(eval_env, check_freq=check_freq, log_file='log.txt', verbose=1)
-
-    # Since we are interested in a single graph, and not in the whole policy producing that graph, it makes sense to check the graphs explored in train_env
-    # Be careful that stop_on_star=False will produce a non-stopping training, and if star_check=True the disk will be probably filled with pickle files of the star. It can be useful to check if training is working, because the star should be found by the greedy policy by a close-to-optimal policy
-    check_callback = CheckOnTrainEnvCallback(check_freq=check_freq, log_file=f'log_{number_of_nodes}.txt', star_check=False, stop_on_star=False, stop_on_counterexample=False, verbose=0)
 
     # LinEnv is a fixed-horizon MDP. Every episode is number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2 steps long. If we want to make "similar" experiments with different number_of_nodes, it makes sense to fix the number_of_episodes instead of steps, and setting total_timesteps = number_of_edges * number_of_episodes
 
@@ -94,18 +83,33 @@ if __name__ == "__main__":
     exploration_final_eps = 0.05 # To be tuned
     learning_rate = 1E-5 # To be tuned
 
-    # number_of_episodes = policy_total_params * 2
-
     # total_timesteps = number_of_edges * number_of_episodes # The constant after // in number_of_episodes is chosen so that when number_of_nodes = 4, total_timesteps ~ X, where X is the number of timesteps needed to find the star at least on 5 consecutive trials when number_of_nodes = 4
 
     # print(f"total_timesteps = {total_timesteps}")
 
-    # Create the DQN agent. net_arch = [128, 64, 4] is Wagner choice. To be tuned
-    net_arch = [128, 64, 4]
-    model = DQN('MlpPolicy', train_env, verbose=1, exploration_fraction=exploration_fraction, exploration_final_eps=exploration_final_eps, learning_rate=learning_rate, policy_kwargs={"net_arch": net_arch}, tensorboard_log=f"./tensorboard_logs_{number_of_nodes}/")
+    # Generate a unique UUID for saving experiment data
+    unique_id = uuid.uuid4()
+    # Use the UUID to create a unique folder name
+    unique_folder = f"DQN_{number_of_nodes}_{unique_id}"
+
+    # Create the DQN agent. net_arch = [128, 64, 4] is Wagner choice.
+    net_arch = [128, 64, 4] # To be tuned
+    model = DQN('MlpPolicy', train_env, verbose=1, exploration_fraction=exploration_fraction, exploration_final_eps=exploration_final_eps, learning_rate=learning_rate, policy_kwargs={"net_arch": net_arch}, tensorboard_log=f"./{unique_folder}/tensorboard/")
+
+    # Since we are interested in a single graph, and not in the whole policy producing that graph, it makes sense to check the graphs explored in train_env
+    # Be careful that stop_on_star=False will produce a non-stopping training, and if star_check=True the disk will be probably filled with pickle files of the star. It can be useful to check if training is working, because the star should be found by the greedy policy by a close-to-optimal policy
+    check_freq = 1 # Check frequency for the callback: check every 1 call to the env
+    # check_freq = episode_length * 1 # Check every 1 episode
+    check_callback = CheckOnTrainEnvCallback(check_freq=check_freq, log_file=f'./{unique_folder}/log.txt', star_check=False, stop_on_star=False, stop_on_counterexample=False, verbose=0)
+    
+    # If we want to evaluate the policy, we need a separate (and not normalized) env because we do not want to interfere with train_env by performing episodes
+    eval_env = LinEnv(number_of_nodes, normalize_reward=False) # For evaluation we don't want normalization
+    eval_freq = 10 * episode_length
+    eval_callback = EvalCallback(eval_env, n_eval_episodes=1, eval_freq=eval_freq, log_path=f"./{unique_folder}/eval_callback/", best_model_save_path=f"./{unique_folder}/best_model/", deterministic=True, verbose=1)
+    # check_callback = CheckCallback(eval_env, check_freq=check_freq, log_file='log.txt', verbose=1)
 
     # Train the agent until a star or a counterexample is found
-    model.learn(total_timesteps=total_timesteps, callback=check_callback)
+    model.learn(total_timesteps=total_timesteps, callback=[check_callback, eval_callback], progress_bar=True)
 
     # load_results("log.txt")
 
