@@ -47,11 +47,12 @@ from save_and_load import CheckOnTrainEnvCallback, load_results
 # plt.show()
 # exit(0)
 
-number_of_nodes = 30 # Needed by the lambda function creating the envs, thus must be put outside the if __name__ == '__main__': to be executed in every training env created by SubprocVecEnv. Update: I wasn't able to make SubprocVecEnv work, I am now using DummyVecEnv 
+number_of_nodes = 18 # Needed by the lambda function creating the envs, thus must be put outside the if __name__ == '__main__': to be executed in every training env created by SubprocVecEnv. Update: I wasn't able to make SubprocVecEnv work, I am now using DummyVecEnv 
 
 def make_linenv():
     return LinEnv(number_of_nodes=number_of_nodes, normalize_reward=True)
 
+# This block is needed by multiprocessing, but for the moment is not working, so we use DummyVecEnv instead
 if __name__ == "__main__":
 
     number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
@@ -59,8 +60,8 @@ if __name__ == "__main__":
     # register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True) # Needed by rl_zoo3. This register 'LinEnv-v0' with normalization. To change this name we need to change it also in rl_zoo3/hyperparams/ppo.yml
 
     # Create a list of training environments for multiprocessing
-    number_of_envs = 28 # Set this value = number of cores
-    train_env = make_vec_env(make_linenv, n_envs=number_of_envs, vec_env_cls=DummyVecEnv)
+    number_of_envs = 1 # Set this value = number of cores to enable multiprocess
+    train_env = make_vec_env(make_linenv, n_envs=number_of_envs, vec_env_cls=DummyVecEnv) # Replace DummyVecEn  with SubprocVecEnv for true multiprocess
     episode_length = number_of_edges # LinEnv has a fixed horizon: every episode lasts exactly number_of_edges steps
 
     # number_of_states = train_env.number_of_states # Computed as 2 ** number_of_edges - 1
@@ -74,7 +75,7 @@ if __name__ == "__main__":
 
     # Since we are interested in a single graph, and not in the whole policy producing that graph, it makes sense to check the graphs explored in train_env
     # Be careful that stop_on_star=False will produce a non-stopping training, and if star_check=True the disk will be probably filled with pickle files of the star. It can be useful to check if training is working, because the star should be found by the greedy policy by a close-to-optimal policy
-    check_callback = CheckOnTrainEnvCallback(check_freq=check_freq, log_file=f'log_{number_of_nodes}.txt', star_check=True, stop_on_star=False, stop_on_counterexample=False, verbose=1)
+    check_callback = CheckOnTrainEnvCallback(check_freq=check_freq, log_file=f'log_{number_of_nodes}.txt', star_check=False, stop_on_star=False, stop_on_counterexample=False, verbose=0)
 
     # LinEnv is a fixed-horizon MDP. Every episode is number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2 steps long. If we want to make "similar" experiments with different number_of_nodes, it makes sense to fix the number_of_episodes instead of steps, and setting total_timesteps = number_of_edges * number_of_episodes
 

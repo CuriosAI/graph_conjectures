@@ -73,7 +73,11 @@ class Graph:
         ax.clear()
         # Draw the new graph
         #plt.title(f"wagner1 score = {graph.wagner1()} = {const} - ({radius} + {weight}) = sqrt(8) + 1 - (radius + weight)")
-        nx.draw(self.graph, pos=pos, ax=ax, with_labels=True)
+        # nx.draw_networkx_edges(self.graph, pos=pos, ax=ax)
+        # nx.draw_networkx_nodes(self.graph, pos=pos, ax=ax, node_color='lightyellow', edgecolors='black')
+        # nx.draw_networkx_labels(self.graph, pos=pos, ax=ax, font_color='black')
+        nx.draw(self.graph, pos=pos, ax=ax, with_labels=True, node_color='lightyellow', font_color='black', edgecolors='black')
+        # nx.draw(self.graph, pos=pos, ax=ax, with_labels=True)
         # Update the display
         plt.draw()
         # Pause for a moment to show the plot
