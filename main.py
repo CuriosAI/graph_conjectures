@@ -90,10 +90,10 @@ if __name__ == "__main__":
     # Generate a unique UUID for saving experiment data
     unique_id = uuid.uuid4()
     # Use the UUID to create a unique folder name
-    unique_folder = f"DQN_{number_of_nodes}_{unique_id}"
+    unique_folder = f"experiments/DQN_{number_of_nodes}_{unique_id}"
 
     # Create the DQN agent. net_arch = [128, 64, 4] is Wagner choice.
-    net_arch = [128, 64, 4] # To be tuned
+    net_arch = [256, 128, 64, 32] # To be tuned
     model = DQN('MlpPolicy', train_env, verbose=1, exploration_fraction=exploration_fraction, exploration_final_eps=exploration_final_eps, learning_rate=learning_rate, policy_kwargs={"net_arch": net_arch}, tensorboard_log=f"./{unique_folder}/tensorboard/")
 
     # Since we are interested in a single graph, and not in the whole policy producing that graph, it makes sense to check the graphs explored in train_env
