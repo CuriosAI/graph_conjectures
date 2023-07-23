@@ -94,7 +94,7 @@ if __name__ == "__main__":
 
     # Create the DQN agent. net_arch = [128, 64, 4] is Wagner choice.
     net_arch = [256, 128, 64, 32] # To be tuned
-    model = DQN('MlpPolicy', train_env, verbose=1, exploration_fraction=exploration_fraction, exploration_final_eps=exploration_final_eps, learning_rate=learning_rate, policy_kwargs={"net_arch": net_arch}, tensorboard_log=f"./{unique_folder}/tensorboard/")
+    model = DQN('MlpPolicy', train_env, verbose=0, exploration_fraction=exploration_fraction, exploration_final_eps=exploration_final_eps, learning_rate=learning_rate, policy_kwargs={"net_arch": net_arch}, tensorboard_log=f"./{unique_folder}/tensorboard/")
 
     # Since we are interested in a single graph, and not in the whole policy producing that graph, it makes sense to check the graphs explored in train_env
     # Be careful that stop_on_star=False will produce a non-stopping training, and if star_check=True the disk will be probably filled with pickle files of the star. It can be useful to check if training is working, because the star should be found by the greedy policy by a close-to-optimal policy
