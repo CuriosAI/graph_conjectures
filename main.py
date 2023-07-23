@@ -48,7 +48,7 @@ from save_and_load import CheckOnTrainEnvCallback, load_results
 # plt.show()
 # exit(0)
 
-number_of_nodes = 18 # Needed by the lambda function creating the envs, thus must be put outside the if __name__ == '__main__': to be executed in every training env created by SubprocVecEnv. Update: I wasn't able to make SubprocVecEnv work, I am now using DummyVecEnv 
+number_of_nodes = 6 # Needed by the lambda function creating the envs, thus must be put outside the if __name__ == '__main__': to be executed in every training env created by SubprocVecEnv. Update: I wasn't able to make SubprocVecEnv work, I am now using DummyVecEnv 
 
 def make_normalized_linenv():
     return LinEnv(number_of_nodes=number_of_nodes, normalize_reward=True)
@@ -140,13 +140,13 @@ if __name__ == "__main__":
 
     # Create the DQN agent. net_arch = [128, 64, 4] is Wagner choice.
     net_arch = [256, 128, 64, 32, 16, 8, 4] # To be tuned
-    model = DQN('MlpPolicy', train_env, verbose=0, exploration_fraction=exploration_fraction, exploration_final_eps=exploration_final_eps, learning_rate=learning_rate, policy_kwargs={"net_arch": net_arch}, tensorboard_log=f"./{unique_folder}/tensorboard/")
+    model = DQN('MlpPolicy', train_env, exploration_fraction=exploration_fraction, exploration_final_eps=exploration_final_eps, learning_rate=learning_rate, policy_kwargs={"net_arch": net_arch}, tensorboard_log=f"./{unique_folder}/tensorboard/", verbose=0)
 
     # Since we are interested in a single graph, and not in the whole policy producing that graph, it makes sense to check the graphs explored in train_env
     # Be careful that stop_on_star=False will produce a non-stopping training, and if star_check=True the disk will be probably filled with pickle files of the star. It can be useful to check if training is working, because the star should be found by the greedy policy by a close-to-optimal policy
     check_freq = 1 # Check frequency for the callback: check every 1 call to the env
     # check_freq = episode_length * 1 # Check every 1 episode
-    check_callback = CheckOnTrainEnvCallback(check_freq=check_freq, log_folder=unique_folder, star_check=False, stop_on_star=False, stop_on_counterexample=False, verbose=0)
+    check_callback = CheckOnTrainEnvCallback(check_freq=check_freq, log_folder=unique_folder, star_check=True, stop_on_star=True, stop_on_counterexample=False, verbose=1)
     
     # If we want to evaluate the policy, we need a separate (and not normalized) env because we do not want to interfere with train_env by performing episodes
     eval_env = LinEnv(number_of_nodes, normalize_reward=False) # For evaluation we don't want normalization
