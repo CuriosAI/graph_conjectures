@@ -42,7 +42,7 @@ from graph import Graph
 # from tabular_mc import mc_control_epsilon_greedy, make_epsilon_greedy_policy
 from save_and_load import CheckOnTrainEnvCallback, load_results
 
-##### The code starts here. This is a DQN attempt.
+##### The code starts here.
 
 # load_results()
 # plt.show()
@@ -53,7 +53,53 @@ number_of_nodes = 18 # Needed by the lambda function creating the envs, thus mus
 def make_normalized_linenv():
     return LinEnv(number_of_nodes=number_of_nodes, normalize_reward=True)
 
+# # This block is needed by multiprocessing, but for the moment is not working, so we use DummyVecEnv instead
+# # This is a PPO attempt
+# if __name__ == "__main__":
+
+#     number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
+
+#     # register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True) # Needed by rl_zoo3. This register 'LinEnv-v0' with normalization. To change this name we need to change it also in rl_zoo3/hyperparams/ppo.yml
+
+#     # Create a list of training environments for multiprocessing
+#     number_of_envs = 1 # Set this value = number of cores to enable multiprocess
+#     train_env = make_vec_env(make_normalized_linenv, n_envs=number_of_envs, vec_env_cls=DummyVecEnv) # Replace DummyVecEn  with SubprocVecEnv for true multiprocess
+
+#     episode_length = number_of_edges # LinEnv has a fixed horizon: every episode lasts exactly number_of_edges steps
+
+#     # Generate a unique UUID for saving experiment data
+#     unique_id = uuid.uuid4()
+#     # Use the UUID to create a unique folder name
+#     unique_folder = f"experiments/PPO_{number_of_nodes}_{unique_id}"
+
+#     # Create the PPO agent. net_arch = [128, 64, 4] is Wagner choice.
+#     net_arch = [128, 64, 4] # To be tuned
+#     model = PPO('MlpPolicy', train_env, verbose=1, policy_kwargs={"net_arch": net_arch}, tensorboard_log=f"./{unique_folder}/tensorboard/")
+
+#     # Since we are interested in a single graph, and not in the whole policy producing that graph, it makes sense to check the graphs explored in train_env
+#     # Be careful that stop_on_star=False will produce a non-stopping training, and if star_check=True the disk will be probably filled with pickle files of the star. It can be useful to check if training is working, because the star should be found by the greedy policy by a close-to-optimal policy
+#     check_freq = 1 # Check frequency for the callback: check every 1 call to the env
+#     # check_freq = episode_length * 1 # Check every 1 episode
+#     check_callback = CheckOnTrainEnvCallback(check_freq=check_freq, log_folder=unique_folder, star_check=False, stop_on_star=False, stop_on_counterexample=False, verbose=0)
+    
+#     # If we want to evaluate the policy, we need a separate (and not normalized) env because we do not want to interfere with train_env by performing episodes
+#     eval_env = LinEnv(number_of_nodes, normalize_reward=False) # For evaluation we don't want normalization
+#     eval_freq = 10 * episode_length
+#     eval_callback = EvalCallback(eval_env, n_eval_episodes=1, eval_freq=eval_freq, log_path=f"./{unique_folder}/eval_callback/", best_model_save_path=f"./{unique_folder}/best_model/", deterministic=True, verbose=1)
+#     # check_callback = CheckCallback(eval_env, check_freq=check_freq, log_file='log.txt', verbose=1)
+
+#     # Train the agent until a star or a counterexample is found
+#     total_timesteps = 10E9
+#     model.learn(total_timesteps=total_timesteps, callback=[check_callback, eval_callback], progress_bar=True)
+
+#     # load_results("log.txt")
+
+#     exit(0)
+
+# exit(0)
+
 # This block is needed by multiprocessing, but for the moment is not working, so we use DummyVecEnv instead
+# This is a DQN attempt
 if __name__ == "__main__":
 
     number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
@@ -93,7 +139,7 @@ if __name__ == "__main__":
     unique_folder = f"experiments/DQN_{number_of_nodes}_{unique_id}"
 
     # Create the DQN agent. net_arch = [128, 64, 4] is Wagner choice.
-    net_arch = [256, 128, 64, 32] # To be tuned
+    net_arch = [256, 128, 64, 32, 16, 8, 4] # To be tuned
     model = DQN('MlpPolicy', train_env, verbose=0, exploration_fraction=exploration_fraction, exploration_final_eps=exploration_final_eps, learning_rate=learning_rate, policy_kwargs={"net_arch": net_arch}, tensorboard_log=f"./{unique_folder}/tensorboard/")
 
     # Since we are interested in a single graph, and not in the whole policy producing that graph, it makes sense to check the graphs explored in train_env
@@ -115,69 +161,7 @@ if __name__ == "__main__":
 
     exit(0)
 
-
-# # Test the trained agent
-# state, _ = env.reset()
-# for step in range(number_of_edges):
-#     action, _ = model.predict(state, deterministic=True)
-#     # print(f"Step {step}")
-#     # print("Action: ", action)
-#     state, reward, done, _, info = env.step(action)
-#     # print("state=", state, "reward=", reward, "done=", done, "info", info)
-#     #env.render()
-#     if done:
-#         # Note that the VecEnv resets automatically
-#         # when a done signal is encountered
-#         # print("Goal reached!", "reward=", reward)
-#         # env.render()
-#         graph = Graph(state[:number_of_edges])
-#         print(f"\ngraph found by DQN after {total_timesteps} steps:\n", sp.triu(nx.adjacency_matrix(graph.graph), format='csr'))
-#         break
-
-
-
-# # Define the edges of the graph
-# edges = [
-#     (0, 6),
-#     (0, 16),
-#     (0, 17),
-#     (1, 5),
-#     (1, 8),
-#     (1, 9),
-#     (1, 13),
-#     (1, 17),
-#     (2, 4),
-#     (2, 10),
-#     (2, 15),
-#     (2, 16),
-#     (3, 4),
-#     (3, 6),
-#     (3, 7),
-#     (3, 8),
-#     (3, 9),
-#     (3, 10),
-#     (3, 11),
-#     (3, 12),
-#     (3, 14),
-# ]
-
-# # Create a new graph
-# G = nx.Graph()
-
-# # Add edges to the graph
-# G.add_edges_from(edges)
-
-# graph = Graph(G)
-
-# print(graph.wagner1())
-# graph.draw()
-
-# plt.show()
-# # Now G is a networkx graph representing the adjacency list
-# exit(0)
-
-
-
+exit(0)
 
 
 
