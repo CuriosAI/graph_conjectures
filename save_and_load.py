@@ -48,10 +48,11 @@ class CheckCallback(BaseCallback):
 
 class CheckOnTrainEnvCallback(BaseCallback):
     """Every check_freq calls to the training env, check the current state and log when a star (if star_check == True) or a counterexample is found."""
-    def __init__(self, check_freq=1, log_file="log.txt", star_check=True, stop_on_star=True, stop_on_counterexample=True, verbose=1):
+    def __init__(self, check_freq=1, log_folder=".", star_check=True, stop_on_star=True, stop_on_counterexample=True, verbose=1):
         super(CheckOnTrainEnvCallback, self).__init__(verbose)
         self.check_freq = check_freq
-        self.log_file = log_file
+        self.log_folder = f"{log_folder}/counterexamples"
+        self.log_file = f"{self.log_folder}/counterexamples.txt"
         self.star_check = star_check
         self.stop_on_star = stop_on_star
         self.stop_on_counterexample = stop_on_counterexample
@@ -83,7 +84,7 @@ class CheckOnTrainEnvCallback(BaseCallback):
                             f.write(f"{hours}h {minutes}m {seconds}s - Star found at env.step() call # {self.n_calls}\n")
                             # f.write(f"{elapsed_time.total_seconds()} seconds - Star found at env.step() call # {self.n_calls}\n")
                             # f.write(f"Star found at env.step() call # {self.n_calls}\n")
-                        with open(f'star_{self.number_of_nodes}_{self.n_calls}.pkl', 'wb') as f:
+                        with open(f'{self.log_folder}/star_{self.number_of_nodes}_{self.n_calls}.pkl', 'wb') as f:
                             pickle.dump(graph, f)
                         # self.star_found = True
                         return not self.stop_on_star
@@ -97,20 +98,22 @@ class CheckOnTrainEnvCallback(BaseCallback):
                     with open(self.log_file, 'a') as f:
                         f.write(f"{hours}h {minutes}m {seconds}s - Counterexample found at training step {self.n_calls}\n")
                         # f.write(f"Counterexample found at training step {self.n_calls}\n")
-                    with open(f'counterexample_{self.number_of_nodes}_{self.n_calls}.pkl', 'wb') as f:
+                    with open(f'{self.log_folder}/counterexample_{self.number_of_nodes}_{self.n_calls}.pkl', 'wb') as f:
                         pickle.dump(graph, f)
                     return not self.stop_on_counterexample
 
         return True
 
-def load_results(log_file="log.txt"):
+def load_results(log_folder="."):
     """
     Load and visualize the graphs from the counterexample files referenced in the log file.
 
     Parameters:
-    log_file (str): Path to the log file.
+    log_folder (str): Path to the log folder.
     """
-
+    
+    log_file = f"{log_folder}/counterexamples.txt"
+    
     # Check if the log file exists
     if not os.path.exists(log_file):
         print("No stars or counterexamples found")
@@ -128,7 +131,7 @@ def load_results(log_file="log.txt"):
             step = int(line.split()[-1])
 
             # Construct the pickle file name from the step number
-            pickle_file = f'counterexample_{step}.pkl'
+            pickle_file = f'{log_folder}/counterexample_{step}.pkl'
 
             # Load the graph from the pickle file
             with open(pickle_file, 'rb') as f:

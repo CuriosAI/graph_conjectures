@@ -100,7 +100,7 @@ if __name__ == "__main__":
     # Be careful that stop_on_star=False will produce a non-stopping training, and if star_check=True the disk will be probably filled with pickle files of the star. It can be useful to check if training is working, because the star should be found by the greedy policy by a close-to-optimal policy
     check_freq = 1 # Check frequency for the callback: check every 1 call to the env
     # check_freq = episode_length * 1 # Check every 1 episode
-    check_callback = CheckOnTrainEnvCallback(check_freq=check_freq, log_file=f'./{unique_folder}/log.txt', star_check=False, stop_on_star=False, stop_on_counterexample=False, verbose=0)
+    check_callback = CheckOnTrainEnvCallback(check_freq=check_freq, log_folder=unique_folder, star_check=False, stop_on_star=False, stop_on_counterexample=False, verbose=0)
     
     # If we want to evaluate the policy, we need a separate (and not normalized) env because we do not want to interfere with train_env by performing episodes
     eval_env = LinEnv(number_of_nodes, normalize_reward=False) # For evaluation we don't want normalization
