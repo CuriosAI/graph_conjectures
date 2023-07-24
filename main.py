@@ -5,6 +5,7 @@ import math
 import itertools as it
 import random
 import scipy.sparse as sp
+import pandas as pd
 
 import json
 import pathlib
@@ -24,9 +25,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3 import PPO, DQN
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.callbacks import BaseCallback, ProgressBarCallback, EvalCallback, StopTrainingOnRewardThreshold
-
-#from tensorboard.compat import tf
+from stable_baselines3.common.callbacks import BaseCallback, EvalCallback, StopTrainingOnRewardThreshold, CheckpointCallback
 
 # from stable_baselines3.common.results_plotter import load_results, ts2xy
 
@@ -41,62 +40,75 @@ from graph import Graph
 # from optuna_objective import objective_sb3, save_best_params_wrapper
 # from tabular_mc import mc_control_epsilon_greedy, make_epsilon_greedy_policy
 from save_and_load import CheckOnTrainEnvCallback, load_results
+from helpers import show_counterexamples, read_experiment
 
+##########################
 ##### The code starts here.
+##########################
 
-# load_results()
-# plt.show()
+unique_folder = "experiments/230724150354-PPO_18"
+unique_folder = "experiments/230724010203-DQN_18"
+
+# # Read eval_callback and best_model folders, and visualize one greedy and 5 non-greedy graphs from the best_model policy. For DQN, the non-greedy graphs are produced by epsilong-greedy policy, with the default epsilon = 0.05
+# read_experiment(unique_folder)
 # exit(0)
+
+show_counterexamples(unique_folder)
+plt.show()
+exit(0)
 
 number_of_nodes = 18 # Needed by the lambda function creating the envs, thus must be put outside the if __name__ == '__main__': to be executed in every training env created by SubprocVecEnv. Update: I wasn't able to make SubprocVecEnv work, I am now using DummyVecEnv 
 
 def make_normalized_linenv():
     return LinEnv(number_of_nodes=number_of_nodes, normalize_reward=True)
 
-# # This block is needed by multiprocessing, but for the moment is not working, so we use DummyVecEnv instead
-# # This is a PPO attempt
-# if __name__ == "__main__":
+# This block is needed by multiprocessing, but for the moment is not working, so we use DummyVecEnv instead
+# This is a PPO attempt
+if __name__ == "__main__":
 
-#     number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
+    number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
 
-#     # register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True) # Needed by rl_zoo3. This register 'LinEnv-v0' with normalization. To change this name we need to change it also in rl_zoo3/hyperparams/ppo.yml
+    # register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True) # Needed by rl_zoo3. This register 'LinEnv-v0' with normalization. To change this name we need to change it also in rl_zoo3/hyperparams/ppo.yml
 
-#     # Create a list of training environments for multiprocessing
-#     number_of_envs = 1 # Set this value = number of cores to enable multiprocess
-#     train_env = make_vec_env(make_normalized_linenv, n_envs=number_of_envs, vec_env_cls=DummyVecEnv) # Replace DummyVecEn  with SubprocVecEnv for true multiprocess
+    # Create a list of training environments for multiprocessing
+    number_of_envs = 1 # Set this value = number of cores to enable multiprocess
+    train_env = make_vec_env(make_normalized_linenv, n_envs=number_of_envs, vec_env_cls=DummyVecEnv) # Replace DummyVecEn  with SubprocVecEnv for true multiprocess
 
-#     episode_length = number_of_edges # LinEnv has a fixed horizon: every episode lasts exactly number_of_edges steps
+    episode_length = number_of_edges # LinEnv has a fixed horizon: every episode lasts exactly number_of_edges steps
 
-#     # Generate a unique UUID for saving experiment data
-#     unique_id = uuid.uuid4()
-#     # Use the UUID to create a unique folder name
-#     unique_folder = f"experiments/PPO_{number_of_nodes}_{unique_id}"
+    # Generate a unique UUID for saving experiment data
+    unique_id = uuid.uuid4()
+    # Use the UUID to create a unique folder name
+    unique_folder = f"experiments/PPO_{number_of_nodes}_{unique_id}"
 
-#     # Create the PPO agent. net_arch = [128, 64, 4] is Wagner choice.
-#     net_arch = [128, 64, 4] # To be tuned
-#     model = PPO('MlpPolicy', train_env, verbose=1, policy_kwargs={"net_arch": net_arch}, tensorboard_log=f"./{unique_folder}/tensorboard/")
+    # Create the PPO agent. net_arch = [128, 64, 4] is Wagner choice.
+    net_arch = [128, 64, 4] # To be tuned
+    model = PPO('MlpPolicy', train_env, verbose=1, policy_kwargs={"net_arch": net_arch}, tensorboard_log=f"./{unique_folder}/tensorboard/")
 
-#     # Since we are interested in a single graph, and not in the whole policy producing that graph, it makes sense to check the graphs explored in train_env
-#     # Be careful that stop_on_star=False will produce a non-stopping training, and if star_check=True the disk will be probably filled with pickle files of the star. It can be useful to check if training is working, because the star should be found by the greedy policy by a close-to-optimal policy
-#     check_freq = 1 # Check frequency for the callback: check every 1 call to the env
-#     # check_freq = episode_length * 1 # Check every 1 episode
-#     check_callback = CheckOnTrainEnvCallback(check_freq=check_freq, log_folder=unique_folder, star_check=False, stop_on_star=False, stop_on_counterexample=False, verbose=0)
+    # Since we are interested in a single graph, and not in the whole policy producing that graph, it makes sense to check the graphs explored in train_env
+    # Be careful that stop_on_star=False will produce a non-stopping training, and if star_check=True the disk will be probably filled with pickle files of the star. It can be useful to check if training is working, because the star should be found by the greedy policy by a close-to-optimal policy
+    check_freq = 1 # Check frequency for the callback: check every 1 call to the env
+    # check_freq = episode_length * 1 # Check every 1 episode
+    check_callback = CheckOnTrainEnvCallback(check_freq=check_freq, log_folder=unique_folder, star_check=True, stop_on_star=False, stop_on_counterexample=False, verbose=0)
     
-#     # If we want to evaluate the policy, we need a separate (and not normalized) env because we do not want to interfere with train_env by performing episodes
-#     eval_env = LinEnv(number_of_nodes, normalize_reward=False) # For evaluation we don't want normalization
-#     eval_freq = 10 * episode_length
-#     eval_callback = EvalCallback(eval_env, n_eval_episodes=1, eval_freq=eval_freq, log_path=f"./{unique_folder}/eval_callback/", best_model_save_path=f"./{unique_folder}/best_model/", deterministic=True, verbose=1)
-#     # check_callback = CheckCallback(eval_env, check_freq=check_freq, log_file='log.txt', verbose=1)
+    # If we want to evaluate the policy, we need a separate (and not normalized) env because we do not want to interfere with train_env by performing episodes
+    eval_env = LinEnv(number_of_nodes, normalize_reward=False) # For evaluation we don't want normalization
+    eval_freq = 10 * episode_length
+    eval_callback = EvalCallback(eval_env, n_eval_episodes=1, eval_freq=eval_freq, log_path=f"./{unique_folder}/eval_callback/", best_model_save_path=f"./{unique_folder}/best_model/", deterministic=True, verbose=1)
+    # check_callback = CheckCallback(eval_env, check_freq=check_freq, log_file='log.txt', verbose=1)
 
-#     # Train the agent until a star or a counterexample is found
-#     total_timesteps = 10E9
-#     model.learn(total_timesteps=total_timesteps, callback=[check_callback, eval_callback], progress_bar=True)
+    # Save a checkpoint every 100 episodes
+    checkpoint_callback = CheckpointCallback(save_freq=100*episode_length, save_path=f"./{unique_folder}/checkpoints/", name_prefix="model")
 
-#     # load_results("log.txt")
+    # Train the agent until a star or a counterexample is found
+    total_timesteps = 10E9
+    model.learn(total_timesteps=total_timesteps, callback=[check_callback, eval_callback, checkpoint_callback], progress_bar=True)
 
-#     exit(0)
+    # load_results("log.txt")
 
-# exit(0)
+    exit(0)
+
+exit(0)
 
 # This block is needed by multiprocessing, but for the moment is not working, so we use DummyVecEnv instead
 # This is a DQN attempt

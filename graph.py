@@ -66,21 +66,30 @@ class Graph:
         is_star = degree_sequence.count(1) == len(degree_sequence) - 1 and degree_sequence.count(len(degree_sequence) - 1) == 1
         return is_star
 
-    def draw(self):
-        # Create a figure and axes
-        fig, ax = plt.subplots()
+    # def draw(self, ax=None):
+    #     # If no axes are provided, create a new figure and axes
+    #     if ax is None:
+    #         _, ax = plt.subplots()
+    #     pos = nx.spring_layout(self.graph)
+    #     # Draw the new graph
+    #     ax.set_title(f"wagner1 score = {self.wagner1()}")
+    #     nx.draw(self.graph, pos=pos, ax=ax, with_labels=True, node_color='lightyellow', font_color='black', edgecolors='black')
+    #     # If no axes were provided, keep the window open
+    #     if ax is None:
+    #         plt.show()
+
+    def draw(self, title=None, ax=None):
+        # If no axes are provided, create a new figure and axes
+        if ax is None:
+            _, ax = plt.subplots()
         pos = nx.spring_layout(self.graph)
-        ax.clear()
+        # Create the title string
+        title_string = f"wagner1 score = {self.wagner1()}"
+        if title is not None:
+            title_string = f"{title}\n{title_string}"
         # Draw the new graph
-        #plt.title(f"wagner1 score = {graph.wagner1()} = {const} - ({radius} + {weight}) = sqrt(8) + 1 - (radius + weight)")
-        # nx.draw_networkx_edges(self.graph, pos=pos, ax=ax)
-        # nx.draw_networkx_nodes(self.graph, pos=pos, ax=ax, node_color='lightyellow', edgecolors='black')
-        # nx.draw_networkx_labels(self.graph, pos=pos, ax=ax, font_color='black')
+        ax.set_title(title_string)
         nx.draw(self.graph, pos=pos, ax=ax, with_labels=True, node_color='lightyellow', font_color='black', edgecolors='black')
-        # nx.draw(self.graph, pos=pos, ax=ax, with_labels=True)
-        # Update the display
-        plt.draw()
-        # Pause for a moment to show the plot
-        plt.pause(1)
-        # Keep the window open
-        #plt.show()
+        # If no axes were provided, keep the window open
+        if ax is None:
+            plt.show()
