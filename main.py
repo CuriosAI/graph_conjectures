@@ -22,7 +22,7 @@ import gymnasium as gym
 from gymnasium import spaces
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3 import PPO, DQN
+from stable_baselines3 import PPO, DQN, A2C
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback, StopTrainingOnRewardThreshold, CheckpointCallback
@@ -40,18 +40,17 @@ from graph import Graph
 # from optuna_objective import objective_sb3, save_best_params_wrapper
 # from tabular_mc import mc_control_epsilon_greedy, make_epsilon_greedy_policy
 from save_and_load import CheckOnTrainEnvCallback, load_results
-from helpers import show_counterexamples, read_experiment, create_experiment_folder
+from helpers import show_counterexamples, read_experiment, create_experiment_folder, make_normalized_linenv
+from a2c_run import a2c_run
 
 ##########################
 ##### The code starts here.
 ##########################
 
-# unique_folder = "experiments/230724150354-PPO_18"
-# unique_folder = "experiments/230724010203-DQN_18"
+# unique_folder = "experiments/20230724225111-DQN_20"
 
 # # Read eval_callback and best_model folders, and visualize one greedy and 5 non-greedy graphs from the best_model policy. For DQN, the non-greedy graphs are produced by epsilong-greedy policy, with the default epsilon = 0.05
 # read_experiment(unique_folder)
-# exit(0)
 
 # show_counterexamples(unique_folder)
 # plt.show()
@@ -59,8 +58,15 @@ from helpers import show_counterexamples, read_experiment, create_experiment_fol
 
 number_of_nodes = 20 # Needed by the lambda function creating the envs, thus must be put outside the if __name__ == '__main__': to be executed in every training env created by SubprocVecEnv. Update: I wasn't able to make SubprocVecEnv work, I am now using DummyVecEnv 
 
-def make_normalized_linenv():
-    return LinEnv(number_of_nodes=number_of_nodes, normalize_reward=True)
+# Moved to helpers
+# def make_normalized_linenv():
+#     return LinEnv(number_of_nodes=number_of_nodes, normalize_reward=True)
+
+if __name__ == "__main__":
+    a2c_run(number_of_nodes=number_of_nodes)
+    exit(0)
+
+
 
 # # This block is needed by multiprocessing, but for the moment is not working, so we use DummyVecEnv instead
 # # This is a PPO attempt

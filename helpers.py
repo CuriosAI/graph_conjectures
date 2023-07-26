@@ -40,11 +40,11 @@ def parse_unique_folder(unique_folder):
 
     return algo, number_of_nodes
 
-def print_layer_dims(model):
-    policy_net_dims = [layer.out_features for layer in model.policy.mlp_extractor.policy_net.children() if isinstance(layer, torch.nn.Linear)]
-    value_net_dims = [layer.out_features for layer in model.policy.mlp_extractor.value_net.children() if isinstance(layer, torch.nn.Linear)]
+# def print_layer_dims(model):
+#     policy_net_dims = [layer.out_features for layer in model.policy.mlp_extractor.policy_net.children() if isinstance(layer, torch.nn.Linear)]
+#     value_net_dims = [layer.out_features for layer in model.policy.mlp_extractor.value_net.children() if isinstance(layer, torch.nn.Linear)]
 
-    print(f"policy_net = {policy_net_dims}, value_net = {value_net_dims}")
+#     print(f"policy_net = {policy_net_dims}, value_net = {value_net_dims}")
 
 def create_graphs(model, eval_env, number_of_edges, deterministic):
     state, _ = eval_env.reset()
@@ -102,19 +102,19 @@ def read_experiment(unique_folder):
         print(f"Model type {algo} not recognized.")
 
     eval_env = LinEnv(number_of_nodes=number_of_nodes, normalize_reward=False)
-    number_of_edges = eval_env.number_of_edges
+    number_of_edges = eval_env.number_of_edges # This is the horizon for LinEnv, should be changed for different envs
 
-    # Print layers dimensions
-    print_layer_dims(model)
-    # layers = model.policy.mlp_extractor
-    # layer_dims = [layer.out_features for layer in layers.modules() if hasattr(layer, 'out_features')]
-    # print(layer_dims)
-    # print(layers)
+    # # Print layers dimensions
+    # print_layer_dims(model)
+    # # layers = model.policy.mlp_extractor
+    # # layer_dims = [layer.out_features for layer in layers.modules() if hasattr(layer, 'out_features')]
+    # # print(layer_dims)
+    # # print(layers)
 
     # Create the "optimal" graph
     optimal_graph, optimal_action_probs = create_graphs(model, eval_env, number_of_edges, deterministic=True)
 
-    # Create 5 graphs sampled by the optimal policy
+    # Create 5 graphs sampled by the optimal policy. Useless for DQN, because actions are epsilon-random
     sampled_graphs = []
     sampled_action_probs = []
     for _ in range(5):
@@ -153,78 +153,6 @@ def read_experiment(unique_folder):
     plt.tight_layout()
     plt.subplots_adjust(top=0.95)  # Reduce the top margin to prevent the top graphs from being cut off
     plt.show()
-
-# def show_counterexamples(unique_folder):
-#     """
-#     Load and visualize the graphs from the counterexample and star files in the folder.
-
-#     Parameters:
-#     unique_folder (str): Path to the counterexamples folder.
-#     """
-
-#     counterexamples_folder = f"{unique_folder}/counterexamples"
-    
-#     # Get the list of all pickle files in the counterexamples folder
-#     pickle_files = glob.glob(f"{counterexamples_folder}/*.pkl")
-
-#     # Loop over the pickle files
-#     for pickle_file in pickle_files:
-#         # Extract the step number from the file name
-#         match = re.search(r'(counterexample|star)_(\d+)_(\d+).pkl', pickle_file)
-#         graph_type = match.group(1)
-#         step = int(match.group(3))
-
-#         # Load the graph from the pickle file
-#         with open(pickle_file, 'rb') as f:
-#             graph = pickle.load(f)
-
-#         # Create the title string
-#         title = f"{graph_type} found at step: {step}"
-
-#         # Draw the graph with the title
-#         graph.draw(title=title)
-#         plt.show()
-
-# def show_counterexamples(unique_folder):
-#     """
-#     Load and visualize the graphs from the counterexample and star files in the folder.
-
-#     Parameters:
-#     unique_folder (str): Path to the counterexamples folder.
-#     """
-
-#     counterexamples_folder = f"{unique_folder}/counterexamples"
-    
-#     # Get the list of all pickle files in the counterexamples folder
-#     pickle_files = glob.glob(f"{counterexamples_folder}/*.pkl")
-
-#     # List to keep track of the graphs we've already seen
-#     seen_graphs = []
-
-#     # Loop over the pickle files
-#     for pickle_file in pickle_files:
-#         # Extract the step number from the file name
-#         match = re.search(r'(counterexample|star)_(\d+)_(\d+).pkl', pickle_file)
-#         graph_type = match.group(1)
-#         step = int(match.group(3))
-
-#         # Load the graph from the pickle file
-#         with open(pickle_file, 'rb') as f:
-#             graph = pickle.load(f)
-
-#         # Check if the graph is isomorphic to any of the previous ones
-#         if any(nx.is_isomorphic(graph.graph, g.graph) for g in seen_graphs):
-#             continue  # Skip this graph
-
-#         # Add the graph to the list of seen graphs
-#         seen_graphs.append(graph)
-
-#         # Create the title string
-#         title = f"{graph_type} found at step: {step}"
-
-#         # Draw the graph with the title
-#         graph.draw(title=title)
-#         plt.show()
 
 def show_counterexamples(unique_folder):
     """
@@ -273,3 +201,16 @@ def show_counterexamples(unique_folder):
 
     # Print the number of skipped graphs
     print(f"{skipped_graphs} graphs skipped, because isomorphic to one of the graphs shown")
+
+
+def make_env(env_id):
+    def _init():
+        env = LinEnv(env_id)
+        return env
+    return _init
+
+def make_normalized_linenv(number_of_nodes):
+    def _init():
+        env = LinEnv(number_of_nodes=number_of_nodes, normalize_reward=True)
+        return env
+    return _init
