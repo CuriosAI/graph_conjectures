@@ -43,20 +43,59 @@ from save_and_load import CheckOnTrainEnvCallback, load_results
 from helpers import show_counterexamples, read_experiment, create_experiment_folder, make_normalized_linenv
 from a2c_run import a2c_run
 
+def counterexamples_build(start, end):
+    '''Return a list of nx.Graph() objects, with nodes in range(start, end + 1). These graphs are built as the typical counterexample. Use it to check that wagner1() is increasing, and 17 nodes is the first dimension where wagner1() > 0.'''
+    graphs = []
+    for n in range(start, end + 1):
+        # Create an empty graph
+        G = nx.Graph()
+
+        # Calculate the number of nodes in each star
+        star_size = (n - 3) // 2
+
+        # Add edges for the star centered at node 1
+        for i in range(3, 3 + star_size):
+            G.add_edge(1, i)
+
+        # Add edges for the star centered at node 2
+        for i in range(3 + star_size, n):
+            G.add_edge(2, i)
+
+        # Add edges from the central node 0 to nodes 1 and 2
+        G.add_edge(0, 1)
+        G.add_edge(0, 2)
+
+        # Add the graph to the list
+        graphs.append(G)
+
+    return graphs
+
+
+
 ##########################
 ##### The code starts here.
 ##########################
 
+# graphs = counterexamples_build(17, 25)
+
+# # Draw the graphs
+# for G in graphs:
+#     graph = Graph(G)
+#     graph.draw()
+#     plt.show()
+
+# exit(0)
+
 # unique_folder = "experiments/20230724225111-DQN_20"
 
-# # Read eval_callback and best_model folders, and visualize one greedy and 5 non-greedy graphs from the best_model policy. For DQN, the non-greedy graphs are produced by epsilong-greedy policy, with the default epsilon = 0.05
+# # Read eval_callback and best_model folders in unique_folder, and visualize one greedy and 5 non-greedy graphs from the best_model policy. For DQN, the non-greedy graphs are produced by epsilong-greedy policy, with the default epsilon = 0.05, so they are meaningless.
 # read_experiment(unique_folder)
 
 # show_counterexamples(unique_folder)
 # plt.show()
 # exit(0)
 
-number_of_nodes = 20 # Needed by the lambda function creating the envs, thus must be put outside the if __name__ == '__main__': to be executed in every training env created by SubprocVecEnv. Update: I wasn't able to make SubprocVecEnv work, I am now using DummyVecEnv 
+number_of_nodes = 18 # Needed by the lambda function creating the envs, thus must be put outside the if __name__ == '__main__': to be executed in every training env created by SubprocVecEnv. Update: I wasn't able to make SubprocVecEnv work, I am now using DummyVecEnv 
 
 # Moved to helpers
 # def make_normalized_linenv():
@@ -65,8 +104,6 @@ number_of_nodes = 20 # Needed by the lambda function creating the envs, thus mus
 if __name__ == "__main__":
     a2c_run(number_of_nodes=number_of_nodes)
     exit(0)
-
-
 
 # # This block is needed by multiprocessing, but for the moment is not working, so we use DummyVecEnv instead
 # # This is a PPO attempt

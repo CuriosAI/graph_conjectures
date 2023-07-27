@@ -7,6 +7,7 @@ import pickle
 import glob
 import re
 import networkx as nx
+import random
 
 from datetime import datetime
 
@@ -15,17 +16,9 @@ from stable_baselines3 import PPO, DQN
 from envs import LinEnv
 from graph import Graph
 
-def create_experiment_folder(algo, number_of_nodes):
-    # Get the current date and time
-    now = datetime.now()
-
-    # Format the date and time as a string
-    date_time_string = now.strftime("%Y%m%d%H%M%S")
-
-    # Use the date and time string to create a unique folder name
-    unique_folder = f"experiments/{date_time_string}-{algo}_{number_of_nodes}"
-
-    return unique_folder
+def create_experiment_folder(algo, number_of_nodes, net_arch):
+    experiment_folder = f'experiments/{algo}_{number_of_nodes}_{net_arch}_{random.getrandbits(16):x}'
+    return experiment_folder
 
 def parse_unique_folder(unique_folder):
     # Split the unique folder string into parts
@@ -201,13 +194,6 @@ def show_counterexamples(unique_folder):
 
     # Print the number of skipped graphs
     print(f"{skipped_graphs} graphs skipped, because isomorphic to one of the graphs shown")
-
-
-def make_env(env_id):
-    def _init():
-        env = LinEnv(env_id)
-        return env
-    return _init
 
 def make_normalized_linenv(number_of_nodes):
     def _init():
