@@ -17,7 +17,8 @@ from envs import LinEnv
 from graph import Graph
 
 def create_experiment_folder(algo, number_of_nodes, net_arch):
-    experiment_folder = f'experiments/{algo}_{number_of_nodes}_{net_arch}_{random.getrandbits(16):x}'
+    net_arch_str = "_".join(str(x) for x in net_arch)
+    experiment_folder = f'experiments/{algo}-{number_of_nodes}-{net_arch_str}-{random.getrandbits(16):x}'
     return experiment_folder
 
 def parse_unique_folder(unique_folder):

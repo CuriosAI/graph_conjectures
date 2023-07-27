@@ -39,7 +39,7 @@ from envs import LinEnv, register_linenv
 from graph import Graph
 # from optuna_objective import objective_sb3, save_best_params_wrapper
 # from tabular_mc import mc_control_epsilon_greedy, make_epsilon_greedy_policy
-from save_and_load import CheckOnTrainEnvCallback, load_results
+from save_and_load import CheckOnTrainEnvCallback
 from helpers import show_counterexamples, read_experiment, create_experiment_folder, make_normalized_linenv
 from a2c_run import a2c_run
 
