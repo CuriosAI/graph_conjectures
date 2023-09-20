@@ -10,7 +10,6 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 # my classes
-#from feats_miner import feats_miner
 from graph import Graph
 
 class LinEnv(gym.Env):
@@ -19,10 +18,11 @@ class LinEnv(gym.Env):
   REMOVE = 0
   INSERT = 1
 
-  def __init__(self, number_of_nodes, normalize_reward):
+  def __init__(self, number_of_nodes, normalize_reward=True):
 
     super(LinEnv, self).__init__()
     self.action_space = spaces.Discrete(2)
+    self.number_of_actions = self.action_space.n
     assert isinstance(number_of_nodes, int), "'number_of_nodes' is not an integer"
     self.number_of_nodes = number_of_nodes
     self.number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
@@ -45,6 +45,8 @@ class LinEnv(gym.Env):
       graph[edge_index] = 0
     else:
       graph[edge_index] = 1
+    # print(f'graph after action {action} is {graph}')
+    # input()
 
     # Update the timestep
     if edge_index < self.number_of_edges - 1:
@@ -61,7 +63,7 @@ class LinEnv(gym.Env):
     if edge_index < self.number_of_edges - 1:
       info = {}
       reward = 0.0
-    elif not Graph(graph).is_connected():
+    elif not Graph(self.state).is_connected():
       #reward = float('-inf')
       reward = -1.0 if self.normalize_reward else -5.0 # penalty to be used when the conjecture holds only for connected graphs. this normalization assumes that other rewards are > -1
       #reward = 0.0
@@ -72,7 +74,7 @@ class LinEnv(gym.Env):
     else:
     # print(f"reward term = {Graph(graph).wagner1()}")
       # We normalize dividing by number_of_nodes, because empirically we see that min(wagner1())~-number_of_nodes. It should be proved.
-      reward = Graph(graph).wagner1()/self.number_of_nodes if self.normalize_reward else Graph(graph).wagner1()
+      reward = Graph(self.state).wagner1()/self.number_of_nodes if self.normalize_reward else Graph(self.state).wagner1()
       # make_vec_env resets automatically when a done signal is encountered
       # we use info to pass the terminal state
       info = {}
@@ -107,7 +109,7 @@ class LinEnv(gym.Env):
     return copy.deepcopy(self.state), {}
 
   def render(self):
-    Graph(self.state[:self.number_of_edges]).draw()
+    Graph(self.state).draw()
     
 # def register_linenv(number_of_nodes):
 def register_linenv(number_of_nodes, normalize_reward):
@@ -119,3 +121,106 @@ def register_linenv(number_of_nodes, normalize_reward):
       kwargs={'number_of_nodes': number_of_nodes, 'normalize_reward': normalize_reward}
   )
   # return id
+
+####################
+# CHATGPT PROPOSAL
+####################
+
+class LocEnv(gym.Env):
+
+  # Define the possible actions: change (1) or not change (0) an edge in the graph
+  CHANGE = 1
+  NOT_CHANGE = 0
+
+  def __init__(self, number_of_nodes, max_steps, normalize_reward=True):
+
+    super(LocEnv, self).__init__()
+    
+    # Define the action space: choose a node and decide to change or not change the edge
+    self.action_space = spaces.Tuple((spaces.Discrete(number_of_nodes), spaces.Discrete(2)))
+    self.number_of_actions = 2 * number_of_nodes
+
+    # Initialize environment variables
+    self.number_of_nodes = number_of_nodes
+    self.number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2 # Not needed
+    self.max_steps = max_steps
+    
+    # Define the observation space: includes both the adjacency matrix and the current node
+    self.observation_space = spaces.Dict({
+        'adjacency_matrix': spaces.Box(low=0, high=1, shape=(number_of_nodes, number_of_nodes), dtype=np.int8),
+        'current_node': spaces.Discrete(number_of_nodes)
+    })
+    
+    self.current_node = 0  # Start at node 0
+    self.current_step = 0  # Initialize step counter
+    self.normalize_reward = normalize_reward  # Whether to normalize rewards
+    self.done = False  # Initialize 'done' flag
+    self.reset() # Here self.state is created
+
+  def step(self, action):
+
+    # Extract the target node and the decision to change or not change the edge from the action
+    target_node, change_edge = action
+
+    # Update the adjacency matrix based on the action
+    if change_edge == self.CHANGE:
+      # XOR operation to flip the bit, effectively changing the edge
+      self.adjacency_matrix[self.current_node, target_node] ^= 1
+      self.adjacency_matrix[target_node, self.current_node] ^= 1
+
+    # Update the current node to the target node
+    self.current_node = target_node
+
+    # From now on, self.state is the next state
+    self.state = {'adjacency_matrix': self.adjacency_matrix, 'current_node': self.current_node}
+
+    # Increment the step counter
+    self.current_step += 1
+
+    # Check if the episode should end
+    if self.current_step >= self.max_steps:
+      self.done = True
+
+    # Calculate the reward based on the final graph
+    reward = 0.0
+    info = {}
+    if self.done:
+      # Calculate reward based on graph connectivity and the 'wagner1' score
+      if not Graph(self.state).is_connected():
+        reward = -1.0 if self.normalize_reward else -5.0
+        info = {}
+      else:
+        reward = Graph(self.state).wagner1() / self.number_of_nodes if self.normalize_reward else Graph(self.state).wagner1()
+        info = {}
+
+    # For gymnasium compatibility, step() must return a tuple of 5 elements:
+    # state, reward, reward, terminated, truncated, info.
+    return copy.deepcopy(self.state), reward, self.done, False, info
+
+  def reset(self):
+
+    """
+    Reset the environment to a new initial state.
+    """
+
+    # Initialize the adjacency matrix to zeros
+    self.adjacency_matrix = np.zeros((self.number_of_nodes, self.number_of_nodes), dtype=np.int8)
+    
+    # Reset current node and step counter
+    self.current_node = 0
+    self.current_step = 0
+    
+    # Reset 'done' flag
+    self.done = False
+
+    # Compile the state dictionary
+    self.state = {'adjacency_matrix': self.adjacency_matrix, 'current_node': self.current_node}
+
+    return copy.deepcopy(self.state), {}
+
+  def render(self):
+    # Assuming Graph(self.state[:self.number_of_edges]).draw() would draw the graph,
+    # here it would be:
+    Graph(self.state).draw()
+    
+# You'll need to implement the Graph class and its methods like is_connected() and wagner1()

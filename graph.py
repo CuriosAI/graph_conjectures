@@ -3,37 +3,33 @@ import networkx as nx
 import numpy as np
 
 class Graph:
-    def __init__(self, graph):
-        if isinstance(graph, nx.Graph):
-            self.graph = self.process_nx_graph(graph)
-        elif isinstance(graph, np.ndarray):
-            self.graph = self.process_linear_graph(graph)
+    def __init__(self, state):
+        if isinstance(state, nx.Graph):
+            self.graph = self.process_nx_graph(state)
+        elif isinstance(state, np.ndarray) and len(state.shape) == 1:
+            self.graph = self.process_linenv_state(state)
+        elif isinstance(state, dict) and all(key in state for key in ['adjacency_matrix', 'current_node']):
+            self.graph = self.process_locenv_state(state)
         else:
-            raise TypeError("graph must be a networkx Graph or a linear graph")
+            raise TypeError("input state must be a networkx Graph, a LinEnv state, or a LocEnv state")
+        
         self.number_of_nodes = self.graph.number_of_nodes()
 
-    def process_nx_graph(self, graph):
-        return graph
+    def process_nx_graph(self, state):
+        return state
 
-    def process_linear_graph(self, graph):
-        """A linear graph is a (non-directed, unlabeled, without loops) graph described by a ndarray of shape (edges, ), where edges (i,j) are in lessicografic order"""
+    def process_linenv_state(self, state):
+        """Here state is the state as encoded in LinEnv, that is, a (non-directed, unlabeled, without loops) graph described by a ndarray of shape (2 * edges, ), where edges (i,j) are in lessicografic order"""
+        
+        # Remove the timestep part
+        number_of_edges = len(state) // 2
+        graph = state[:number_of_edges]
         assert all(element in [0, 1] for element in graph), "graph is a ndarray, but it contains elements other than 0 and 1"
-        # nodes_if_graph_is_without_timestep = int((1 + np.sqrt(1 + 8 * len(graph))) / 2)
-        # nodes_if_graph_is_with_timestep = int((1 + np.sqrt(1 + 4 * len(graph))) / 2)
-        # condition_without = (nodes_if_graph_is_without_timestep == (1 + np.sqrt(1 + 8 * len(graph))) / 2)
-        # condition_with = (nodes_if_graph_is_with_timestep == (1 + np.sqrt(1 + 4 * len(graph))) / 2)
-        # assert condition_without ^ condition_with, f"wrong len(graph): one and only one between (1 + np.sqrt(1 + 8 * len(graph))) / 2 = {(1 + np.sqrt(1 + 8 * len(graph))) / 2} and (1 + np.sqrt(1 + 4 * len(graph))) / 2 = {(1 + np.sqrt(1 + 4 * len(graph))) / 2} should be integer"
-        # if condition_without:
-        #     number_of_nodes = nodes_if_graph_is_without_timestep
-        # elif condition_with:
-        #     number_of_nodes = nodes_if_graph_is_with_timestep
-        #     edges = int(len(graph) / 2)
-        #     graph = graph[:edges] # remove the timestep part
-        # else:
-        #     exit("this point in the software should not be reachable, what is happening?")
-        number_of_nodes = int((1 + np.sqrt(1 + 8 * len(graph))) / 2)
-        condition = (number_of_nodes == (1 + np.sqrt(1 + 8 * len(graph))) / 2)
-        assert condition, f"wrong len(graph): 'number_of_nodes' = (1 + np.sqrt(1 + 8 * len(graph))) / 2 = {(1 + np.sqrt(1 + 8 * len(graph))) / 2} should be integer"
+        
+        # Recover number_of_nodes from number_of_edges
+        number_of_nodes = int((1 + np.sqrt(1 + 8 * number_of_edges)) / 2)
+        condition = (number_of_nodes == (1 + np.sqrt(1 + 8 * number_of_edges)) / 2)
+        assert condition, f"wrong len(graph): 'number_of_nodes' = (1 + np.sqrt(1 + 8 * len(graph))) / 2 = {(1 + np.sqrt(1 + 8 * number_of_edges)) / 2} should be integer"
 
         # Create an empty graph
         G = nx.Graph()
@@ -48,7 +44,13 @@ class Graph:
                 if graph[edge_index] == 1:
                     G.add_edge(i, j)
                 edge_index += 1
+        return G
 
+    def process_locenv_state(self, state):
+        # Get the adjacency matrix from the LocEnv state
+        graph = state['adjacency_matrix']
+        # Create a networkx graph from the adjacency matrix
+        G = nx.Graph(graph)
         return G
 
     def wagner1(self):
@@ -65,18 +67,6 @@ class Graph:
         degree_sequence = [d for n, d in self.graph.degree()]
         is_star = degree_sequence.count(1) == len(degree_sequence) - 1 and degree_sequence.count(len(degree_sequence) - 1) == 1
         return is_star
-
-    # def draw(self, ax=None):
-    #     # If no axes are provided, create a new figure and axes
-    #     if ax is None:
-    #         _, ax = plt.subplots()
-    #     pos = nx.spring_layout(self.graph)
-    #     # Draw the new graph
-    #     ax.set_title(f"wagner1 score = {self.wagner1()}")
-    #     nx.draw(self.graph, pos=pos, ax=ax, with_labels=True, node_color='lightyellow', font_color='black', edgecolors='black')
-    #     # If no axes were provided, keep the window open
-    #     if ax is None:
-    #         plt.show()
 
     def draw(self, title=None, ax=None):
         # If no axes are provided, create a new figure and axes
