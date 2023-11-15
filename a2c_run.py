@@ -16,7 +16,7 @@ def a2c_run(number_of_nodes):
 
     # Create a list of training environments for multiprocessing
     number_of_envs = 1 # Set this value = number of cores to enable multiprocess
-    train_env = make_vec_env(make_normalized_linenv(number_of_nodes), n_envs=number_of_envs, vec_env_cls=DummyVecEnv) # Replace DummyVecEn  with SubprocVecEnv for true multiprocess
+    train_env = make_vec_env(make_normalized_linenv(number_of_nodes), seed=1, n_envs=number_of_envs, vec_env_cls=DummyVecEnv) # Replace DummyVecEn  with SubprocVecEnv for true multiprocess
 
     episode_length = number_of_edges # LinEnv has a fixed horizon: every episode lasts exactly number_of_edges steps
 

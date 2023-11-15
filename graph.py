@@ -23,12 +23,14 @@ class Graph:
         
         # Remove the timestep part
         number_of_edges = len(state) // 2
+        print(f"number of edges2 {number_of_edges}")
         graph = state[:number_of_edges]
         assert all(element in [0, 1] for element in graph), "graph is a ndarray, but it contains elements other than 0 and 1"
         
         # Recover number_of_nodes from number_of_edges
         number_of_nodes = int((1 + np.sqrt(1 + 8 * number_of_edges)) / 2)
         condition = (number_of_nodes == (1 + np.sqrt(1 + 8 * number_of_edges)) / 2)
+        print(f"number of nodes2 {number_of_nodes}")
         assert condition, f"wrong len(graph): 'number_of_nodes' = (1 + np.sqrt(1 + 8 * len(graph))) / 2 = {(1 + np.sqrt(1 + 8 * number_of_edges)) / 2} should be integer"
 
         # Create an empty graph

@@ -10,7 +10,7 @@ import pandas as pd
 import json
 import pathlib
 import copy
-import h5py
+#import h5py
 from collections import defaultdict
 import sys
 import json
@@ -101,9 +101,9 @@ number_of_nodes = 18 # Needed by the lambda function creating the envs, thus mus
 # def make_normalized_linenv():
 #     return LinEnv(number_of_nodes=number_of_nodes, normalize_reward=True)
 
-if __name__ == "__main__":
-    a2c_run(number_of_nodes=number_of_nodes)
-    exit(0)
+# if __name__ == "__main__":
+#     a2c_run(number_of_nodes=number_of_nodes)
+#     exit(0)
 
 # # This block is needed by multiprocessing, but for the moment is not working, so we use DummyVecEnv instead
 # # This is a PPO attempt
@@ -159,12 +159,15 @@ if __name__ == "__main__":
 if __name__ == "__main__":
 
     number_of_edges = number_of_nodes * (number_of_nodes - 1) // 2
+    print(f"number of edges {number_of_edges}")
+    print(f"number of nodes {number_of_nodes}")
+
 
     # register_linenv(number_of_nodes=number_of_nodes, normalize_reward=True) # Needed by rl_zoo3. This register 'LinEnv-v0' with normalization. To change this name we need to change it also in rl_zoo3/hyperparams/ppo.yml
 
     # Create a list of training environments for multiprocessing
     number_of_envs = 1 # Set this value = number of cores to enable multiprocess
-    train_env = make_vec_env(make_normalized_linenv, n_envs=number_of_envs, vec_env_cls=DummyVecEnv) # Replace DummyVecEn  with SubprocVecEnv for true multiprocess
+    train_env = make_vec_env(make_normalized_linenv(number_of_nodes), seed=1, n_envs=number_of_envs, vec_env_cls=DummyVecEnv) # Replace DummyVecEn  with SubprocVecEnv for true multiprocess
 
     episode_length = number_of_edges # LinEnv has a fixed horizon: every episode lasts exactly number_of_edges steps
 
@@ -190,7 +193,7 @@ if __name__ == "__main__":
     # print(f"total_timesteps = {total_timesteps}")
 
     # Generate a unique UUID for saving experiment data
-    unique_folder = create_experiment_folder("DQN", number_of_nodes)
+    unique_folder = create_experiment_folder("DQN", number_of_nodes,('MlpPolicy',))
 
     # Create the DQN agent. net_arch = [128, 64, 4] is Wagner choice.
     net_arch = [128, 64, 4] # To be tuned
