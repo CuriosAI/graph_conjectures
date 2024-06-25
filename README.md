@@ -81,7 +81,7 @@ python main.py
 ## Files Description
 The dataset was originally designed for experiments on Brouwer's conjecture. It contains 11983 graphs with 11 vertices, each one labelled with its laplacian spectra. All dataset's information are divides into three files:
 
-- *n11_graphs.g6*: contains the g6 encoding of the graphs. The .g6 format is a compact text-based encoding. It is well-supported and can be easily read by python NetworkX method *read_graph6*.
+- <b>*n11_graphs.g6*</b>: contains the g6 encoding of the graphs. The .g6 format is a compact text-based encoding. It is well-supported and can be easily read by python NetworkX method *read_graph6*.
 - *n11_laplacian_spectra.txt*: contains the labels. Each line includes 11 laplacian eigenvalues, reported in descending order and separated by spaces. The *i-th* row of this files contains the eigenvalues of the *i-th* graph in *n11_graphs.g6*.
 - *weisfeiler_leman_results.txt* : in this files each row contains a numeric pair, with numbers separated by space. A number *i* represents the graph in the *i-th* row of *n11_graphs.g6*. The reported pairs are the ones that succeeded in 1-dimensional Weifeiler-Leman test, which implies that the two graphs involved could be isomorphic. The total number of such pairs is 1124695.
 
