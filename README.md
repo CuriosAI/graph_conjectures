@@ -79,10 +79,14 @@ python main.py
 # Dataset
 
 ## Files Description
-The dataset was originally designed for experiments on Brouwer's conjecture. It contains 11983 graphs with 11 vertices, each one labelled with its laplacian spectra. All dataset's information are divides into three files:
+The dataset was originally designed for experiments on Brouwer's conjecture. It contains 11983 graphs with 11 vertices, each one labelled with its laplacian spectra. All dataset's information are divided into three files:
 
 - <b>*n11_graphs.g6*</b>: contains the g6 encoding of the graphs. The .g6 format is a compact text-based encoding. It is well-supported and can be easily read by python NetworkX method *read_graph6*.
-- *n11_laplacian_spectra.txt*: contains the labels. Each line includes 11 laplacian eigenvalues, reported in descending order and separated by spaces. The *i-th* row of this files contains the eigenvalues of the *i-th* graph in *n11_graphs.g6*.
-- *weisfeiler_leman_results.txt* : in this files each row contains a numeric pair, with numbers separated by space. A number *i* represents the graph in the *i-th* row of *n11_graphs.g6*. The reported pairs are the ones that succeeded in 1-dimensional Weifeiler-Leman test, which implies that the two graphs involved could be isomorphic. The total number of such pairs is 1124695.
+- <b>*n11_laplacian_spectra.txt*</b>: contains the labels. Each line includes 11 laplacian eigenvalues, reported in descending order and separated by spaces. The *i-th* row of this files contains the eigenvalues of the *i-th* graph in *n11_graphs.g6*.
+- <b>*weisfeiler_leman_results.txt*</b>: in this files each row contains a numeric pair, with numbers separated by space. A number *i* represents the graph in the *i-th* row of *n11_graphs.g6*. The reported pairs are the ones that succeeded in 1-dimensional Weifeiler-Leman test, which implies that the two graphs involved could be isomorphic. The total number of such pairs is 1124695.
 
 ## Dataset generation
+The dataset integrates 11-vertices graphs downloaded from *House of Graphs* online database with random graphs generated via NetworkX implementations of Erdős–Rényi (ER), Watts-Strogatz (WS) and Barabási–Albert (BA) models, in quantities:
+- 1010 graphs drawn from ER models, considering the probability *p* varying in *[0,1]* with step *0.01*. We draw *10* graphs from each choice of *p*.
+- 540 graphs drawn from WS models, varying the mean degree *k* in *{4,6,8}*, and rewriting edges' probability *β* in *[0.1,0.9]* with step *0.1*. This gave us 27 different models and 20 graphs were drawn from each.
+- 10162 graphs obtained from BA models, with parameter *m* varying in *{2,...,9}*. BA algorithm builds a graph starting from an initial configuration on $m_0>m$ nodes. We took House of Graphs' samples with $3 \leq n \leq 10$ and used each $G$ in this batch to start a BA generation with $m<|V(G)|$.
