@@ -1,6 +1,6 @@
 
 ---
-This repository contains the supplementary materials as described in the arXiv paper
+This repository contains the supplementary materials as described in the arXiv paper <br>
 [A Systematization of the Wagner Framework: Graph Theory Conjectures and Reinforcement Learning](https://arxiv.org/abs/2406.12667)
 ---
 
