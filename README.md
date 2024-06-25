@@ -1,8 +1,7 @@
 
 ---
-A Systematization of the Wagner Framework: Graph Theory Conjectures and Reinforcement Learning
+This repository contains the supplementary materials as described in the paper [A Systematization of the Wagner Framework: Graph Theory Conjectures and Reinforcement Learning](https://arxiv.org/abs/2406.12667)
 ---
-This repository contains the supplementary materials as described in the paper [here](https://arxiv.org/abs/2406.12667).
 
 # Environments
 ## Overview
