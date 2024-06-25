@@ -1,6 +1,6 @@
 
 ---
-title: "A Systematization of the Wagner Framework: Graph Theory Conjectures and Reinforcement Learning"
+"A Systematization of the Wagner Framework: Graph Theory Conjectures and Reinforcement Learning"
 output: html_document
 ---
 
