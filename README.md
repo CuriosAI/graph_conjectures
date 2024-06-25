@@ -1,7 +1,6 @@
 
 ---
-"A Systematization of the Wagner Framework: Graph Theory Conjectures and Reinforcement Learning"
-output: html_document
+A Systematization of the Wagner Framework: Graph Theory Conjectures and Reinforcement Learning
 ---
 
 # Overview
