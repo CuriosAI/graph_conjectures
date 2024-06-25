@@ -87,6 +87,10 @@ The dataset was originally designed for experiments on Brouwer's conjecture. It 
 
 ## Dataset generation
 The dataset integrates 11-vertices graphs downloaded from *House of Graphs* online database with random graphs generated via NetworkX implementations of Erdős–Rényi (ER), Watts-Strogatz (WS) and Barabási–Albert (BA) models, in quantities:
-- 1010 graphs drawn from ER models, considering the probability *p* varying in *[0,1]* with step *0.01*. We draw *10* graphs from each choice of *p*.
-- 540 graphs drawn from WS models, varying the mean degree *k* in *{4,6,8}*, and rewriting edges' probability *β* in *[0.1,0.9]* with step *0.1*. This gave us 27 different models and 20 graphs were drawn from each.
-- 10162 graphs obtained from BA models, with parameter *m* varying in *{2,...,9}*. BA algorithm builds a graph starting from an initial configuration on $m_0>m$ nodes. We took House of Graphs' samples with $3 \leq n \leq 10$ and used each $G$ in this batch to start a BA generation with $m<|V(G)|$.
+
+- 1010 graphs drawn from ER models, considering the probability $p$ varying in $[0,1]$ with step $0.01$. We draw 10 graphs from each choice of $p$.
+- 540 graphs drawn from WS models, varying the mean degree $k$ in $\{4,6,8\}$, and rewriting edges' probability $\beta$ in $[0.1,0.9]$ with step $0.1$. This gave us 27 different models and 20 graphs were drawn from each.
+- 10162 graphs obtained from BA models, with parameter *m* varying in $\{2,...,9\}$. BA algorithm builds a graph starting from an initial configuration on $m_0>m$ nodes. We took House of Graphs' samples with $3 \leq n \leq 10$ and used each $G$ in this batch to start a BA generation with $m<|V(G)|$.
+- 271 graphs downloaded from *The House of Graphs*. The database collects non-isomorphic graphs only.
+
+Each of this batches was generated and labelled with its own routine. The 4 groups were then randomly mixed in one single file, to maintain the variety of considered graphs when dividing into minibatches.
