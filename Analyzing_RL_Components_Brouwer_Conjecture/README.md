@@ -54,7 +54,8 @@ It loads the trained models and:
 ---
 
 ### `GIN.py`
-This script contains the architectures used in our experiments with Wagner's algorithm. In this file, you can find
+This script contains the architectures used in our experiments with Wagner's algorithm. 
+You can find:
 - the GIN and GCN structures confronted on the laplacian dataset.
 - a module called policy_layers, used to predict policies after feature extraction (done with GIN or other customizable nets).
 - a module called action_predictor to combined a given feature extractor to policy_layers for predicting policies in case of Linear, Local and Global environments. Must be adapted to other environments in case of usage.
