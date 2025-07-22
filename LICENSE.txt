@@ -1,0 +1,11 @@
+Copyright (c) 2025 CuriosAI Lab
+
+Permission is hereby granted to any person obtaining a copy of this software and associated documentation files (the "Software"), to use, copy, and distribute the Software for any purpose, including academic and commercial use, free of charge, subject to the following conditions:
+
+Attribution Required: Any work or publication that makes use of this code, in part or in full, must include proper citation of the following:
+
+"Developed by CuriosAI Lab – GitHub: https://github.com/CuriosAI/graph_conjectures"
+
+No Warranty: The Software is provided "as is", without warranty of any kind, express or implied.
+
+By using this code, you agree to the terms above.
